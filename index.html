@@ -1174,26 +1174,40 @@ window.generateBracket = async function() {
   const franchises = [...(tournamentData?.franchises || [])];
   if (franchises.length < 2) { showStatus('Pas assez de franchises!', 'error'); return; }
 
-  // Pad to power of 2
-  let size = 1;
-  while (size < franchises.length) size *= 2;
-  while (franchises.length < size) franchises.push(null);
-
-  // Shuffle
+  // Shuffle franchises
   for (let i = franchises.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [franchises[i], franchises[j]] = [franchises[j], franchises[i]];
   }
 
-  // Build round 1
-  const round1 = [];
-  for (let i = 0; i < franchises.length; i += 2) {
-    round1.push({ a: franchises[i] || null, b: franchises[i+1] || null, winner: null, votesA: 0, votesB: 0 });
+  // Pad to power of 2
+  let size = 1;
+  while (size < franchises.length) size *= 2;
+  while (franchises.length < size) franchises.push(null);
+
+  // Split into LEFT and RIGHT halves
+  const half = size / 2;
+  const leftTeams = franchises.slice(0, half);   // 16 teams left side
+  const rightTeams = franchises.slice(half);       // 16 teams right side
+
+  // Build left R32 matches (8 matches from 16 left teams)
+  const leftR32 = [];
+  for (let i = 0; i < leftTeams.length; i += 2) {
+    leftR32.push({ a: leftTeams[i], b: leftTeams[i+1]||null, winner: null, votesA: 0, votesB: 0 });
   }
 
-  // Build subsequent rounds (empty placeholders)
-  const bracket = [round1];
-  let prevSize = round1.length;
+  // Build right R32 matches (8 matches from 16 right teams)
+  const rightR32 = [];
+  for (let i = 0; i < rightTeams.length; i += 2) {
+    rightR32.push({ a: rightTeams[i], b: rightTeams[i+1]||null, winner: null, votesA: 0, votesB: 0 });
+  }
+
+  // Round 0 = all R32 matches: left half first, then right half
+  const round0 = [...leftR32, ...rightR32]; // 16 matches total
+
+  // Build subsequent rounds as empty placeholders
+  const bracket = [round0];
+  let prevSize = round0.length;
   while (prevSize > 1) {
     prevSize = Math.ceil(prevSize / 2);
     bracket.push(Array.from({ length: prevSize }, () => ({ a: null, b: null, winner: null, votesA: 0, votesB: 0 })));
@@ -1213,7 +1227,7 @@ window.generateBracket = async function() {
     status: 'active'
   });
 
-  showStatus('Bracket généré! Ouvrez le vote pour commencer.', 'success');
+  showStatus('Bracket genere! Ouvrez le vote pour commencer.', 'success');
 };
 
 window.openVoting = async function() {
