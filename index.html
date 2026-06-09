@@ -1349,8 +1349,8 @@ function startTimer(endsAt) {
       }
       return;
     }
-    const totalMs = tournamentData?.timerDuration || (5 * 60 * 1000);
-    const fraction = remaining / totalMs;
+    const totalMs = (tournamentData?.timerEndsAt || Date.now()) - (tournamentData?.timerStartedAt || Date.now());
+    const fraction = totalMs > 0 ? remaining / totalMs : 1;
     const offset = circumference * (1 - fraction);
     circle.setAttribute('stroke-dashoffset', offset);
     let display;
@@ -1536,7 +1536,8 @@ window.openVoting = async function() {
     votesRight: { A: 0, B: 0 },
     matchIdLeft:  now + '_L',
     matchIdRight: now + '_R',
-    timerEndsAt: endsAt
+    timerEndsAt: endsAt,
+    timerStartedAt: Date.now()
   });
   showStatus('Vote ouvert! Timer: ' + minutes + ' min', 'success');
 };
