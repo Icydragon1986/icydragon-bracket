@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Icydragon Bracket Tournament</title>
+<title>IcyDragon Bracket Tournament</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1185,7 +1185,7 @@ function renderBracket() {
     tA.innerHTML = '<span>' + (match.a||'?') + '</span>' + (match.winner ? '<span class="bracket-team-votes">'+vA+'</span>' : '');
     tB.innerHTML = '<span>' + (match.b||'?') + '</span>' + (match.winner ? '<span class="bracket-team-votes">'+vB+'</span>' : '');
     card.appendChild(tA); card.appendChild(tB); wrapper.appendChild(card);
-    return { x, y, isActive };
+    return { x, y, isActive: isActiveLeft || isActiveRight };
   }
 
   function addLabel(text, col) {
