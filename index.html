@@ -843,7 +843,7 @@ async function initializeTournament() {
 
   await setDoc(tournamentRef, {
     franchises,
-    bracket: [],
+    numRounds: 0,
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
@@ -855,14 +855,16 @@ async function initializeTournament() {
 }
 
 // ========== RENDER ==========
+function getBracket() {
+  return flatToBracket(tournamentData);
+}
+
 function render() {
   if (!tournamentData) return;
   const d = tournamentData;
 
-  // Live badge
   document.getElementById('liveBadge').style.display = d.votingOpen ? 'inline' : 'none';
 
-  // Winner
   if (d.winner) {
     document.getElementById('winnerSection').style.display = 'block';
     document.getElementById('winnerName').textContent = d.winner;
@@ -879,7 +881,7 @@ function render() {
 
 function renderCurrentMatchup() {
   const d = tournamentData;
-  const bracket = d.bracket || [];
+  const bracket = getBracket();
   const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
 
   if (bracket.length === 0) {
@@ -907,18 +909,15 @@ function renderCurrentMatchup() {
   document.getElementById('votesB').textContent = vB;
   document.getElementById('voteBarA').style.width = Math.round(vA/total*100) + '%';
 
-  // Round title
   document.getElementById('tournamentRoundTitle').textContent =
     `${roundNames[d.currentRound] || 'Tournoi'} — Match ${d.currentMatchIndex + 1}/${round.length}`;
 
-  // Vote status
   const statusEl = document.getElementById('voteStatus');
   const footerEl = document.getElementById('matchupFooter');
 
   const myVoteKey = `icydragon_voted_${d.matchId}`;
   const myVote = localStorage.getItem(myVoteKey);
 
-  // Highlight voted
   document.getElementById('contestantA').classList.toggle('voted', myVote === 'A');
   document.getElementById('contestantB').classList.toggle('voted', myVote === 'B');
 
@@ -940,7 +939,7 @@ function renderBracket() {
   const container = document.getElementById('bracketContainer');
   container.innerHTML = '';
 
-  const bracket = d.bracket || [];
+  const bracket = getBracket();
   if (bracket.length === 0) {
     container.innerHTML = '<div style="color:var(--muted);padding:24px;font-size:0.85rem;">Le bracket sera généré ici...</div>';
     return;
@@ -960,7 +959,6 @@ function renderBracket() {
     const matchesDiv = document.createElement('div');
     matchesDiv.className = 'round-matches';
 
-    // Spacing to align with bracket
     const spacerHeight = rIdx === 0 ? 0 : Math.pow(2, rIdx) * 4;
     matchesDiv.style.paddingTop = spacerHeight + 'px';
     matchesDiv.style.gap = (Math.pow(2, rIdx) * 16 + 8) + 'px';
@@ -990,7 +988,6 @@ function renderBracket() {
     col.appendChild(matchesDiv);
     container.appendChild(col);
 
-    // Spacer line between rounds
     if (rIdx < bracket.length - 1) {
       const spacer = document.createElement('div');
       spacer.className = 'round-spacer';
@@ -1026,6 +1023,34 @@ window.castVote = async function(side) {
 };
 
 // ========== ADMIN ACTIONS ==========
+// Firestore ne supporte pas les tableaux imbriqués
+// On aplatit le bracket: clé "r{round}_m{match}" -> objet match
+function bracketToFlat(bracket) {
+  const flat = {};
+  bracket.forEach((round, rIdx) => {
+    round.forEach((match, mIdx) => {
+      flat[`r${rIdx}_m${mIdx}`] = match;
+    });
+    flat[`round${rIdx}_size`] = round.length;
+  });
+  flat.numRounds = bracket.length;
+  return flat;
+}
+
+function flatToBracket(flat) {
+  const numRounds = flat.numRounds || 0;
+  const bracket = [];
+  for (let r = 0; r < numRounds; r++) {
+    const size = flat[`round${r}_size`] || 0;
+    const round = [];
+    for (let m = 0; m < size; m++) {
+      round.push(flat[`r${r}_m${m}`] || { a: null, b: null, winner: null, votesA: 0, votesB: 0 });
+    }
+    bracket.push(round);
+  }
+  return bracket;
+}
+
 window.generateBracket = async function() {
   const franchises = [...(tournamentData?.franchises || [])];
   if (franchises.length < 2) { showStatus('Pas assez de franchises!', 'error'); return; }
@@ -1044,7 +1069,7 @@ window.generateBracket = async function() {
   // Build round 1
   const round1 = [];
   for (let i = 0; i < franchises.length; i += 2) {
-    round1.push({ a: franchises[i], b: franchises[i+1], winner: null, votesA: 0, votesB: 0 });
+    round1.push({ a: franchises[i] || null, b: franchises[i+1] || null, winner: null, votesA: 0, votesB: 0 });
   }
 
   // Build subsequent rounds (empty placeholders)
@@ -1055,9 +1080,11 @@ window.generateBracket = async function() {
     bracket.push(Array.from({ length: prevSize }, () => ({ a: null, b: null, winner: null, votesA: 0, votesB: 0 })));
   }
 
+  const flat = bracketToFlat(bracket);
+
   await setDoc(tournamentRef, {
-    ...tournamentData,
-    bracket,
+    franchises: tournamentData.franchises,
+    ...flat,
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
@@ -1083,7 +1110,7 @@ window.closeVoting = async function() {
 
 window.advanceWinner = async function() {
   const d = tournamentData;
-  const bracket = JSON.parse(JSON.stringify(d.bracket));
+  const bracket = getBracket();
   const round = bracket[d.currentRound];
   const match = round[d.currentMatchIndex];
 
@@ -1094,7 +1121,6 @@ window.advanceWinner = async function() {
   if (vA >= vB) { winner = match.a; winnerSide = 'A'; }
   else { winner = match.b; winnerSide = 'B'; }
 
-  // Record result
   match.winner = winnerSide;
   match.votesA = vA;
   match.votesB = vB;
@@ -1107,7 +1133,6 @@ window.advanceWinner = async function() {
     else bracket[d.currentRound + 1][nextMatchIdx].b = winner;
   }
 
-  // Advance index
   let nextMatchIndex = d.currentMatchIndex + 1;
   let nextRound = d.currentRound;
   let tournamentWinner = null;
@@ -1117,13 +1142,14 @@ window.advanceWinner = async function() {
     nextMatchIndex = 0;
   }
 
-  // Check if tournament is over
   if (d.currentRound === bracket.length - 1 && d.currentMatchIndex === round.length - 1) {
     tournamentWinner = winner;
   }
 
+  const flat = bracketToFlat(bracket);
+
   await updateDoc(tournamentRef, {
-    bracket,
+    ...flat,
     currentMatchIndex: nextMatchIndex,
     currentRound: nextRound,
     votingOpen: false,
@@ -1139,7 +1165,7 @@ window.resetTournament = async function() {
   if (!confirm('Réinitialiser tout le tournoi?')) return;
   await setDoc(tournamentRef, {
     franchises: tournamentData?.franchises || [],
-    bracket: [],
+    numRounds: 0,
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
