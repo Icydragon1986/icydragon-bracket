@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IcyDragon Bracket Tournament</title>
+<title>Icydragon Bracket Tournament</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -675,6 +675,69 @@
     67%, 100% { content: '...'; }
   }
 
+  /* TIMER */
+  .timer-ring-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+  }
+  .timer-ring { width: 80px; height: 80px; }
+  .timer-text {
+    position: absolute;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .timer-text.urgent { color: var(--danger); animation: pulse 0.5s infinite; }
+
+  /* NEXT MATCH BANNER */
+  .next-match-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.85rem;
+  }
+  .next-match-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+  .next-match-vs {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .next-match-sep {
+    color: var(--accent2);
+    font-size: 1rem;
+    margin: 0 8px;
+  }
+
+  /* ACTIVE MATCH HIGHLIGHT in bracket */
+  .bracket-match.active {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 20px rgba(0, 200, 255, 0.4), 0 0 40px rgba(0, 200, 255, 0.15) !important;
+    background: rgba(0, 200, 255, 0.06) !important;
+  }
+  .bracket-match.active-right {
+    border-color: var(--accent2) !important;
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4), 0 0 40px rgba(124, 58, 237, 0.15) !important;
+    background: rgba(124, 58, 237, 0.06) !important;
+  }
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--surface); }
@@ -720,6 +783,27 @@
     <div class="tournament-title">
       <h1 id="tournamentRoundTitle">Tournoi des Franchises</h1>
       <p id="tournamentSubtitle">Votez pour votre franchise préférée!</p>
+      <div id="timerDisplay" style="display:none;margin-top:12px;">
+        <div class="timer-ring-wrapper">
+          <svg class="timer-ring" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle id="timerRingCircle" cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="6"
+              stroke-dasharray="213.6" stroke-dashoffset="0" stroke-linecap="round"
+              transform="rotate(-90 40 40)"/>
+          </svg>
+          <span id="timerText" class="timer-text">5:00</span>
+        </div>
+      </div>
+      <div id="nextMatchDisplay" style="display:none;" class="next-match-banner">
+        <span class="next-match-label">PROCHAIN :</span>
+        <span id="nextMatchLeft"></span>
+        <span class="next-match-vs">VS</span>
+        <span id="nextMatchLeftB"></span>
+        <span class="next-match-sep">⚔</span>
+        <span id="nextMatchRight"></span>
+        <span class="next-match-vs">VS</span>
+        <span id="nextMatchRightB"></span>
+      </div>
     </div>
 
     <!-- ADMIN PANEL -->
@@ -738,9 +822,17 @@
           <h3>Actions du tournoi</h3>
           <div class="admin-actions">
             <button class="btn btn-gold" onclick="generateBracket()">🎲 Générer le bracket (aléatoire)</button>
-            <button class="btn btn-primary" onclick="openVoting()">▶ Ouvrir le vote</button>
-            <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote</button>
-            <button class="btn btn-success" onclick="advanceWinner()">✓ Avancer le gagnant</button>
+            <div style="display:flex;gap:8px;align-items:center;width:100%;">
+              <button class="btn btn-primary" onclick="openVoting()" style="flex:1;">▶ Ouvrir le vote</button>
+              <input type="number" id="timerMinutes" value="5" min="1" max="100000" style="width:70px;text-align:center;" title="Durée en minutes">
+              <select id="timerUnit" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer;">
+                <option value="1">min</option>
+                <option value="60">heures</option>
+                <option value="1440">jours</option>
+              </select>
+            </div>
+            <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote manuellement</button>
+            <button class="btn btn-success" onclick="advanceWinner()">✓ Avancer le(s) gagnant(s)</button>
             <button class="btn btn-secondary" onclick="resetTournament()">↺ Réinitialiser tout</button>
           </div>
           <div class="status-msg" id="adminStatus"></div>
@@ -904,6 +996,16 @@ function render() {
 
   document.getElementById('liveBadge').style.display = d.votingOpen ? 'inline' : 'none';
 
+  // Timer
+  if (d.votingOpen && d.timerEndsAt) {
+    startTimer(d.timerEndsAt);
+  } else if (!d.votingOpen) {
+    stopTimer();
+  }
+
+  // Next match
+  updateNextMatch();
+
   if (d.winner) {
     document.getElementById('winnerSection').style.display = 'block';
     document.getElementById('winnerName').textContent = d.winner;
@@ -1066,10 +1168,14 @@ function renderBracket() {
   }
 
   function makeCard(match, col, y, origRound, origIdx) {
-    const isActive = origRound === d.currentRound && origIdx === d.currentMatchIndex;
+    const round = getBracket()[origRound] || [];
+    const half = Math.ceil(round.length / 2);
+    const mirrorIdx = round.length - 1 - d.currentMatchIndex;
+    const isActiveLeft  = origRound === d.currentRound && origIdx === d.currentMatchIndex;
+    const isActiveRight = origRound === d.currentRound && origIdx === mirrorIdx && mirrorIdx >= half && mirrorIdx !== d.currentMatchIndex;
     const x = col * ROUND_W;
     const card = document.createElement('div');
-    card.className = 'bracket-match' + (isActive ? ' active' : '');
+    card.className = 'bracket-match' + (isActiveLeft ? ' active' : isActiveRight ? ' active-right' : '');
     card.style.cssText = 'position:absolute;left:'+x+'px;top:'+y+'px;width:'+MATCH_W+'px;';
     const tA = document.createElement('div');
     const tB = document.createElement('div');
@@ -1216,6 +1322,81 @@ function renderAdminFranchises() {
   `).join('');
 }
 
+// ========== TIMER ==========
+let timerInterval = null;
+
+function startTimer(endsAt) {
+  if (timerInterval) clearInterval(timerInterval);
+  const circle = document.getElementById('timerRingCircle');
+  const timerText = document.getElementById('timerText');
+  const timerDisplay = document.getElementById('timerDisplay');
+  const circumference = 213.6;
+
+  timerDisplay.style.display = 'block';
+
+  timerInterval = setInterval(async () => {
+    const remaining = endsAt - Date.now();
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      timerText.textContent = '0:00';
+      circle.setAttribute('stroke-dashoffset', circumference);
+      timerDisplay.style.display = 'none';
+      // Auto close voting
+      if (tournamentData?.votingOpen) {
+        await updateDoc(tournamentRef, { votingOpen: false });
+      }
+      return;
+    }
+    const totalMs = tournamentData?.timerDuration || (5 * 60 * 1000);
+    const fraction = remaining / totalMs;
+    const offset = circumference * (1 - fraction);
+    circle.setAttribute('stroke-dashoffset', offset);
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    timerText.textContent = mins + ':' + String(secs).padStart(2, '0');
+    timerText.className = 'timer-text' + (remaining < 30000 ? ' urgent' : '');
+  }, 500);
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  document.getElementById('timerDisplay').style.display = 'none';
+}
+
+function updateNextMatch() {
+  const d = tournamentData;
+  const bracket = getBracket();
+  if (!bracket.length) return;
+
+  const round = bracket[d.currentRound];
+  if (!round) return;
+  const half = Math.ceil(round.length / 2);
+  const nextLeftIdx = d.currentMatchIndex + 1;
+
+  const banner = document.getElementById('nextMatchDisplay');
+
+  if (nextLeftIdx >= half) {
+    // Next round
+    const nextRound = bracket[d.currentRound + 1];
+    if (!nextRound) { banner.style.display = 'none'; return; }
+    const nL = nextRound[0];
+    const nR = nextRound[nextRound.length - 1];
+    document.getElementById('nextMatchLeft').textContent  = nL?.a || '?';
+    document.getElementById('nextMatchLeftB').textContent = nL?.b || '?';
+    document.getElementById('nextMatchRight').textContent  = nR?.a || '?';
+    document.getElementById('nextMatchRightB').textContent = nR?.b || '?';
+  } else {
+    const nL = round[nextLeftIdx];
+    const nextRightIdx = round.length - 1 - nextLeftIdx;
+    const nR = (nextRightIdx >= half && nextRightIdx !== nextLeftIdx) ? round[nextRightIdx] : null;
+    document.getElementById('nextMatchLeft').textContent  = nL?.a || '?';
+    document.getElementById('nextMatchLeftB').textContent = nL?.b || '?';
+    document.getElementById('nextMatchRight').textContent  = nR?.a || '?';
+    document.getElementById('nextMatchRightB').textContent = nR?.b || '?';
+  }
+  banner.style.display = 'flex';
+}
+
 // ========== VOTING ==========
 window.castVote = async function(matchSide, voteSide) {
   const d = tournamentData;
@@ -1331,14 +1512,19 @@ window.generateBracket = async function() {
 
 window.openVoting = async function() {
   const now = Date.now().toString();
+  const val = parseInt(document.getElementById('timerMinutes')?.value || 5);
+  const unit = parseInt(document.getElementById('timerUnit')?.value || 1);
+  const minutes = val * unit;
+  const endsAt = Date.now() + minutes * 60 * 1000;
   await updateDoc(tournamentRef, {
     votingOpen: true,
     votesLeft:  { A: 0, B: 0 },
     votesRight: { A: 0, B: 0 },
     matchIdLeft:  now + '_L',
-    matchIdRight: now + '_R'
+    matchIdRight: now + '_R',
+    timerEndsAt: endsAt
   });
-  showStatus('Vote ouvert!', 'success');
+  showStatus('Vote ouvert! Timer: ' + minutes + ' min', 'success');
 };
 
 window.closeVoting = async function() {
