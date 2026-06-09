@@ -125,6 +125,28 @@
     margin-bottom: 40px;
   }
 
+  .dual-matchup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .dual-matchup-grid { grid-template-columns: 1fr; }
+  }
+
+  .matchup-label-side {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 6px 0;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
   .section-label {
     font-family: 'Rajdhani', sans-serif;
     font-size: 0.75rem;
@@ -728,33 +750,69 @@
 
     <!-- CURRENT MATCHUP -->
     <div class="current-matchup-section" id="currentMatchupSection">
-      <div class="section-label">Matchup en cours</div>
-      <div class="big-matchup">
-        <div class="matchup-header">
-          <span class="round-badge" id="currentRoundBadge">Round 1</span>
-          <span class="vote-timer" id="voteStatus">En attente...</span>
-        </div>
-        <div class="matchup-body">
-          <div class="contestant" id="contestantA" onclick="castVote('A')">
-            <div class="contestant-name" id="nameA">—</div>
-            <div class="contestant-votes" id="votesA">0</div>
-            <div class="contestant-votes-label">votes</div>
+      <div class="section-label">Matchups en cours</div>
+      <div class="dual-matchup-grid">
+
+        <!-- LEFT MATCHUP -->
+        <div class="big-matchup">
+          <div class="matchup-header">
+            <span class="round-badge" id="currentRoundBadge">Round 1</span>
+            <span class="vote-timer" id="voteStatus">En attente...</span>
           </div>
-          <div class="vs-divider">
-            <span class="vs-text">VS</span>
-            <div class="vote-hint">Cliquez pour voter</div>
-            <div class="vote-bar-container" id="voteBarContainer">
-              <div class="vote-bar-a" id="voteBarA" style="width:50%"></div>
-              <div class="vote-bar-b" id="voteBarB"></div>
+          <div class="matchup-label-side">⬅ Côté gauche</div>
+          <div class="matchup-body">
+            <div class="contestant" id="contestantA" onclick="castVote('left','A')">
+              <div class="contestant-name" id="nameA">—</div>
+              <div class="contestant-votes" id="votesA">0</div>
+              <div class="contestant-votes-label">votes</div>
+            </div>
+            <div class="vs-divider">
+              <span class="vs-text">VS</span>
+              <div class="vote-hint">Cliquez pour voter</div>
+              <div class="vote-bar-container">
+                <div class="vote-bar-a" id="voteBarALeft" style="width:50%"></div>
+                <div class="vote-bar-b"></div>
+              </div>
+            </div>
+            <div class="contestant" id="contestantB" onclick="castVote('left','B')">
+              <div class="contestant-name" id="nameB">—</div>
+              <div class="contestant-votes" id="votesB">0</div>
+              <div class="contestant-votes-label">votes</div>
             </div>
           </div>
-          <div class="contestant" id="contestantB" onclick="castVote('B')">
-            <div class="contestant-name" id="nameB">—</div>
-            <div class="contestant-votes" id="votesB">0</div>
-            <div class="contestant-votes-label">votes</div>
-          </div>
+          <div id="matchupFooterLeft"></div>
         </div>
-        <div id="matchupFooter"></div>
+
+        <!-- RIGHT MATCHUP -->
+        <div class="big-matchup">
+          <div class="matchup-header">
+            <span class="round-badge" id="currentRoundBadgeRight">Round 1</span>
+            <span class="vote-timer" id="voteStatusRight">En attente...</span>
+          </div>
+          <div class="matchup-label-side">Côté droit ➡</div>
+          <div class="matchup-body">
+            <div class="contestant" id="contestantC" onclick="castVote('right','A')">
+              <div class="contestant-name" id="nameC">—</div>
+              <div class="contestant-votes" id="votesC">0</div>
+              <div class="contestant-votes-label">votes</div>
+            </div>
+            <div class="vs-divider">
+              <span class="vs-text">VS</span>
+              <div class="vote-hint">Cliquez pour voter</div>
+              <div class="vote-bar-container">
+                <div class="vote-bar-a" id="voteBarARight" style="width:50%"></div>
+                <div class="vote-bar-b"></div>
+              </div>
+            </div>
+            <div class="contestant" id="contestantD" onclick="castVote('right','B')">
+              <div class="contestant-name" id="nameD">—</div>
+              <div class="contestant-votes" id="votesD">0</div>
+              <div class="contestant-votes-label">votes</div>
+            </div>
+          </div>
+          <div id="matchupFooterRight"></div>
+        </div>
+
       </div>
     </div>
 
@@ -826,8 +884,10 @@ async function initializeTournament() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votes: { A: 0, B: 0 },
-    matchId: '',
+    votesLeft: { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft: '',
+    matchIdRight: '',
     winner: null,
     status: 'setup'
   });
@@ -863,53 +923,79 @@ function renderCurrentMatchup() {
   const bracket = getBracket();
   const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
 
+  const roundName = roundNames[d.currentRound] || ('Round ' + (d.currentRound + 1));
+
   if (bracket.length === 0) {
-    document.getElementById('nameA').textContent = '?';
-    document.getElementById('nameB').textContent = '?';
+    ['nameA','nameB','nameC','nameD'].forEach(id => document.getElementById(id).textContent = '?');
     document.getElementById('currentRoundBadge').textContent = 'Tournoi non démarré';
+    document.getElementById('currentRoundBadgeRight').textContent = 'Tournoi non démarré';
     document.getElementById('voteStatus').textContent = 'Générez le bracket pour commencer';
     return;
   }
 
   const round = bracket[d.currentRound];
   if (!round) return;
-  const match = round[d.currentMatchIndex];
-  if (!match) return;
 
-  document.getElementById('currentRoundBadge').textContent = roundNames[d.currentRound] || `Round ${d.currentRound + 1}`;
-  document.getElementById('nameA').textContent = match.a || '—';
-  document.getElementById('nameB').textContent = match.b || '—';
+  const half = Math.ceil(round.length / 2);
+  const leftIdx  = d.currentMatchIndex;
+  const rightIdx = round.length - 1 - leftIdx; // mirror index on right side
 
-  const vA = d.votes?.A || 0;
-  const vB = d.votes?.B || 0;
-  const total = vA + vB || 1;
+  const leftMatch  = round[leftIdx]  || null;
+  const rightMatch = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
 
-  document.getElementById('votesA').textContent = vA;
-  document.getElementById('votesB').textContent = vB;
-  document.getElementById('voteBarA').style.width = Math.round(vA/total*100) + '%';
-
+  document.getElementById('currentRoundBadge').textContent = roundName;
+  document.getElementById('currentRoundBadgeRight').textContent = roundName;
   document.getElementById('tournamentRoundTitle').textContent =
-    `${roundNames[d.currentRound] || 'Tournoi'} — Match ${d.currentMatchIndex + 1}/${round.length}`;
+    roundName + ' — Paire ' + (leftIdx + 1) + '/' + half;
 
-  const statusEl = document.getElementById('voteStatus');
-  const footerEl = document.getElementById('matchupFooter');
-
-  const myVoteKey = `icydragon_voted_${d.matchId}`;
-  const myVote = localStorage.getItem(myVoteKey);
-
-  document.getElementById('contestantA').classList.toggle('voted', myVote === 'A');
-  document.getElementById('contestantB').classList.toggle('voted', myVote === 'B');
-
-  if (d.votingOpen) {
-    statusEl.innerHTML = '🟢 Vote <span>ouvert</span>';
-    if (myVote) {
-      footerEl.innerHTML = `<div class="already-voted-msg">✓ Vous avez voté pour <strong>${myVote === 'A' ? match.a : match.b}</strong>. Merci!</div>`;
+  // ---- LEFT ----
+  if (leftMatch) {
+    document.getElementById('nameA').textContent = leftMatch.a || '—';
+    document.getElementById('nameB').textContent = leftMatch.b || '—';
+    const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
+    const tot = vA + vB || 1;
+    document.getElementById('votesA').textContent = vA;
+    document.getElementById('votesB').textContent = vB;
+    document.getElementById('voteBarALeft').style.width = Math.round(vA/tot*100) + '%';
+    const myL = localStorage.getItem('icydragon_left_' + d.matchIdLeft);
+    document.getElementById('contestantA').classList.toggle('voted', myL === 'A');
+    document.getElementById('contestantB').classList.toggle('voted', myL === 'B');
+    const fL = document.getElementById('matchupFooterLeft');
+    const sL = document.getElementById('voteStatus');
+    if (d.votingOpen) {
+      sL.innerHTML = '🟢 Vote <span>ouvert</span>';
+      fL.innerHTML = myL ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myL==='A'?leftMatch.a:leftMatch.b) + '</strong></div>' : '';
     } else {
-      footerEl.innerHTML = '';
+      sL.innerHTML = '🔴 Vote <span style="color:var(--muted)">fermé</span>';
+      fL.innerHTML = '<div class="vote-closed-msg">⏳ Vote fermé</div>';
+    }
+  }
+
+  // ---- RIGHT ----
+  if (rightMatch) {
+    document.getElementById('nameC').textContent = rightMatch.a || '—';
+    document.getElementById('nameD').textContent = rightMatch.b || '—';
+    const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
+    const totR = vC + vD || 1;
+    document.getElementById('votesC').textContent = vC;
+    document.getElementById('votesD').textContent = vD;
+    document.getElementById('voteBarARight').style.width = Math.round(vC/totR*100) + '%';
+    const myR = localStorage.getItem('icydragon_right_' + d.matchIdRight);
+    document.getElementById('contestantC').classList.toggle('voted', myR === 'A');
+    document.getElementById('contestantD').classList.toggle('voted', myR === 'B');
+    const fR = document.getElementById('matchupFooterRight');
+    const sR = document.getElementById('voteStatusRight');
+    if (d.votingOpen) {
+      sR.innerHTML = '🟢 Vote <span>ouvert</span>';
+      fR.innerHTML = myR ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myR==='A'?rightMatch.a:rightMatch.b) + '</strong></div>' : '';
+    } else {
+      sR.innerHTML = '🔴 Vote <span style="color:var(--muted)">fermé</span>';
+      fR.innerHTML = '<div class="vote-closed-msg">⏳ Vote fermé</div>';
     }
   } else {
-    statusEl.innerHTML = '🔴 Vote <span style="color:var(--muted)">fermé</span>';
-    footerEl.innerHTML = '<div class="vote-closed-msg">⏳ Vote fermé — en attente de l\'admin pour ouvrir le prochain vote</div>';
+    ['nameC','nameD'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('matchupFooterRight').innerHTML = '<div class="vote-closed-msg">Pas de match miroir</div>';
+    document.getElementById('voteStatusRight').innerHTML = '';
   }
 }
 
@@ -1131,18 +1217,25 @@ function renderAdminFranchises() {
 }
 
 // ========== VOTING ==========
-window.castVote = async function(side) {
+window.castVote = async function(matchSide, voteSide) {
   const d = tournamentData;
   if (!d.votingOpen) return;
 
-  const myVoteKey = `icydragon_voted_${d.matchId}`;
-  if (localStorage.getItem(myVoteKey)) return; // Already voted
-
-  localStorage.setItem(myVoteKey, side);
-
-  const newVotes = { ...d.votes };
-  newVotes[side] = (newVotes[side] || 0) + 1;
-  await updateDoc(tournamentRef, { votes: newVotes });
+  if (matchSide === 'left') {
+    const key = 'icydragon_left_' + d.matchIdLeft;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, voteSide);
+    const newVotes = { ...(d.votesLeft || {}) };
+    newVotes[voteSide] = (newVotes[voteSide] || 0) + 1;
+    await updateDoc(tournamentRef, { votesLeft: newVotes });
+  } else {
+    const key = 'icydragon_right_' + d.matchIdRight;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, voteSide);
+    const newVotes = { ...(d.votesRight || {}) };
+    newVotes[voteSide] = (newVotes[voteSide] || 0) + 1;
+    await updateDoc(tournamentRef, { votesRight: newVotes });
+  }
 };
 
 // ========== ADMIN ACTIONS ==========
@@ -1225,8 +1318,10 @@ window.generateBracket = async function() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votes: { A: 0, B: 0 },
-    matchId: Date.now().toString(),
+    votesLeft: { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft: Date.now().toString() + '_L',
+    matchIdRight: Date.now().toString() + '_R',
     winner: null,
     status: 'active'
   });
@@ -1235,8 +1330,14 @@ window.generateBracket = async function() {
 };
 
 window.openVoting = async function() {
-  const matchId = Date.now().toString();
-  await updateDoc(tournamentRef, { votingOpen: true, votes: { A: 0, B: 0 }, matchId });
+  const now = Date.now().toString();
+  await updateDoc(tournamentRef, {
+    votingOpen: true,
+    votesLeft:  { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft:  now + '_L',
+    matchIdRight: now + '_R'
+  });
   showStatus('Vote ouvert!', 'success');
 };
 
@@ -1249,53 +1350,68 @@ window.advanceWinner = async function() {
   const d = tournamentData;
   const bracket = getBracket();
   const round = bracket[d.currentRound];
-  const match = round[d.currentMatchIndex];
+  const half = Math.ceil(round.length / 2);
 
-  const vA = d.votes?.A || 0;
-  const vB = d.votes?.B || 0;
+  const leftIdx  = d.currentMatchIndex;
+  const rightIdx = round.length - 1 - leftIdx;
 
-  let winner, winnerSide;
-  if (vA >= vB) { winner = match.a; winnerSide = 'A'; }
-  else { winner = match.b; winnerSide = 'B'; }
+  // Advance LEFT match
+  const leftMatch = round[leftIdx];
+  const vLA = d.votesLeft?.A || 0, vLB = d.votesLeft?.B || 0;
+  const leftWinnerSide = vLA >= vLB ? 'A' : 'B';
+  const leftWinner = leftWinnerSide === 'A' ? leftMatch.a : leftMatch.b;
+  leftMatch.winner = leftWinnerSide;
+  leftMatch.votesA = vLA; leftMatch.votesB = vLB;
 
-  match.winner = winnerSide;
-  match.votesA = vA;
-  match.votesB = vB;
-
-  // Place winner in next round
   if (d.currentRound + 1 < bracket.length) {
-    const nextMatchIdx = Math.floor(d.currentMatchIndex / 2);
-    const isA = d.currentMatchIndex % 2 === 0;
-    if (isA) bracket[d.currentRound + 1][nextMatchIdx].a = winner;
-    else bracket[d.currentRound + 1][nextMatchIdx].b = winner;
+    const nIdx = Math.floor(leftIdx / 2);
+    if (leftIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = leftWinner;
+    else bracket[d.currentRound + 1][nIdx].b = leftWinner;
   }
 
-  let nextMatchIndex = d.currentMatchIndex + 1;
+  // Advance RIGHT match (mirror)
+  let rightWinner = null;
+  if (rightIdx >= half && rightIdx !== leftIdx && round[rightIdx]) {
+    const rightMatch = round[rightIdx];
+    const vRA = d.votesRight?.A || 0, vRB = d.votesRight?.B || 0;
+    const rightWinnerSide = vRA >= vRB ? 'A' : 'B';
+    rightWinner = rightWinnerSide === 'A' ? rightMatch.a : rightMatch.b;
+    rightMatch.winner = rightWinnerSide;
+    rightMatch.votesA = vRA; rightMatch.votesB = vRB;
+
+    if (d.currentRound + 1 < bracket.length) {
+      const nIdx = Math.floor(rightIdx / 2);
+      if (rightIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = rightWinner;
+      else bracket[d.currentRound + 1][nIdx].b = rightWinner;
+    }
+  }
+
+  // Advance index by 1 (skip the mirror match since we handled both)
+  let nextMatchIndex = leftIdx + 1;
   let nextRound = d.currentRound;
+  // Skip right half indices
+  if (nextMatchIndex >= half) { nextRound++; nextMatchIndex = 0; }
+
   let tournamentWinner = null;
-
-  if (nextMatchIndex >= round.length) {
-    nextRound++;
-    nextMatchIndex = 0;
-  }
-
-  if (d.currentRound === bracket.length - 1 && d.currentMatchIndex === round.length - 1) {
-    tournamentWinner = winner;
+  if (d.currentRound === bracket.length - 1 && leftIdx === 0) {
+    tournamentWinner = leftWinner;
   }
 
   const flat = bracketToFlat(bracket);
-
+  const now = Date.now().toString();
   await updateDoc(tournamentRef, {
     ...flat,
     currentMatchIndex: nextMatchIndex,
     currentRound: nextRound,
     votingOpen: false,
-    votes: { A: 0, B: 0 },
-    matchId: Date.now().toString(),
+    votesLeft:  { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft:  now + '_L',
+    matchIdRight: now + '_R',
     winner: tournamentWinner
   });
 
-  showStatus(`${winner} avance au tour suivant!`, 'success');
+  showStatus(leftWinner + (rightWinner ? ' & ' + rightWinner : '') + ' avancent!', 'success');
 };
 
 window.resetTournament = async function() {
@@ -1306,8 +1422,10 @@ window.resetTournament = async function() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votes: { A: 0, B: 0 },
-    matchId: '',
+    votesLeft: { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft: '',
+    matchIdRight: '',
     winner: null,
     status: 'setup'
   });
