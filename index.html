@@ -815,11 +815,11 @@
             <button class="btn btn-gold" onclick="generateBracket()">🎲 Générer le bracket (aléatoire)</button>
             <div style="display:flex;gap:8px;align-items:center;width:100%;">
               <button class="btn btn-primary" onclick="openVoting()" style="flex:1;">▶ Ouvrir le vote</button>
-              <input type="number" id="timerMinutes" value="5" min="1" max="100000" style="width:70px;text-align:center;" title="Durée en minutes">
+              <input type="number" id="timerMinutes" value="7" min="1" max="100000" style="width:70px;text-align:center;" title="Durée en minutes">
               <select id="timerUnit" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:0.82rem;cursor:pointer;">
                 <option value="1">min</option>
                 <option value="60">heures</option>
-                <option value="1440">jours</option>
+                <option value="1440" selected>jours</option>
               </select>
             </div>
             <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote manuellement</button>
@@ -1353,9 +1353,21 @@ function startTimer(endsAt) {
     const fraction = remaining / totalMs;
     const offset = circumference * (1 - fraction);
     circle.setAttribute('stroke-dashoffset', offset);
-    const mins = Math.floor(remaining / 60000);
-    const secs = Math.floor((remaining % 60000) / 1000);
-    timerText.textContent = mins + ':' + String(secs).padStart(2, '0');
+    let display;
+    if (remaining >= 86400000) {
+      const days  = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      display = days + 'j ' + hours + 'h';
+    } else if (remaining >= 3600000) {
+      const hours = Math.floor(remaining / 3600000);
+      const mins  = Math.floor((remaining % 3600000) / 60000);
+      display = hours + 'h ' + String(mins).padStart(2,'0') + 'm';
+    } else {
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      display = mins + ':' + String(secs).padStart(2, '0');
+    }
+    timerText.textContent = display;
     timerText.className = 'timer-text' + (remaining < 30000 ? ' urgent' : '');
   }, 500);
 }
