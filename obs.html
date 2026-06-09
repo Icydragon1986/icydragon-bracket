@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icydragon Bracket — OBS</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00c8ff;
+    --accent2: #7c3aed;
+    --gold: #f59e0b;
+    --win: #10b981;
+    --lose: #374151;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* HEADER BAR */
+  .obs-header {
+    background: linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0d1b2a 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .obs-logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .obs-logo span { color: var(--text); }
+
+  .obs-round {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .obs-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* BRACKET WRAPPER */
+  .bracket-wrapper {
+    width: 100vw;
+    padding: 16px 12px 8px;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* MATCH CARDS */
+  .bracket-match {
+    background: rgba(17, 24, 39, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    backdrop-filter: blur(4px);
+  }
+
+  .bracket-match.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(0, 200, 255, 0.5), 0 0 32px rgba(0, 200, 255, 0.2);
+    background: rgba(0, 200, 255, 0.06);
+  }
+
+  .bracket-match.active-right {
+    border-color: var(--accent2);
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.5), 0 0 32px rgba(124, 58, 237, 0.2);
+    background: rgba(124, 58, 237, 0.06);
+  }
+
+  .bracket-team {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bracket-team:first-child { border-bottom: 1px solid var(--border); }
+
+  .bracket-team.winner {
+    color: var(--win);
+    background: rgba(16, 185, 129, 0.1);
+  }
+  .bracket-team.loser {
+    color: var(--lose);
+    text-decoration: line-through;
+  }
+  .bracket-team.tbd { color: var(--muted); font-style: italic; }
+
+  .bracket-team-votes {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-left: 4px;
+    flex-shrink: 0;
+  }
+  .bracket-team.winner .bracket-team-votes { color: var(--win); }
+
+  .round-header {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    padding: 2px 4px;
+  }
+
+  /* CURRENT MATCHUP OVERLAY — bottom bar */
+  .current-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(10,14,26,0.98) 0%, rgba(10,14,26,0.8) 100%);
+    border-top: 2px solid var(--border);
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .current-bar-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .current-matchup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .current-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .current-votes {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--accent);
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .current-votes.right { color: var(--accent2); }
+
+  .vs-small {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .separator {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+
+  .vote-bar-mini {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .vote-bar-mini-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: var(--muted);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* SCROLLBAR hidden */
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loadingDiv" class="loading">Chargement...</div>
+<div id="obsContent" style="display:none">
+
+  <div class="obs-header">
+    <div class="obs-logo">Icydragon <span>Bracket</span></div>
+    <div class="obs-round" id="obsRoundTitle">Tournoi des Franchises</div>
+    <div class="obs-status">
+      <div class="live-dot" id="obsDot" style="background:var(--muted)"></div>
+      <span id="obsStatusText">En attente</span>
+    </div>
+  </div>
+
+  <div class="bracket-wrapper">
+    <div id="obsBracketContainer"></div>
+  </div>
+
+  <!-- Bottom current matchup bar -->
+  <div class="current-bar" id="currentBar" style="display:none">
+    <div class="current-bar-label">EN VOTE</div>
+
+    <!-- Left matchup -->
+    <div class="current-matchup">
+      <div>
+        <div class="current-name" id="obsNameA" style="color:var(--accent)">—</div>
+        <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarA" style="width:50%;background:var(--accent)"></div></div>
+      </div>
+      <div style="text-align:center">
+        <div class="current-votes" id="obsVotesA">0</div>
+      </div>
+      <div class="vs-small">VS</div>
+      <div style="text-align:center">
+        <div class="current-votes" id="obsVotesB">0</div>
+      </div>
+      <div>
+        <div class="current-name" id="obsNameB" style="color:var(--text);text-align:right">—</div>
+        <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarB" style="width:50%;background:var(--accent2)"></div></div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Right matchup -->
+    <div class="current-matchup">
+      <div>
+        <div class="current-name" id="obsNameC" style="color:var(--accent2)">—</div>
+        <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarC" style="width:50%;background:var(--accent2)"></div></div>
+      </div>
+      <div style="text-align:center">
+        <div class="current-votes right" id="obsVotesC">0</div>
+      </div>
+      <div class="vs-small">VS</div>
+      <div style="text-align:center">
+        <div class="current-votes right" id="obsVotesD">0</div>
+      </div>
+      <div>
+        <div class="current-name" id="obsNameD" style="color:var(--text);text-align:right">—</div>
+        <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarD" style="width:50%;background:var(--accent)"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCryxnVICzNQ5rTNY9jiiOiXUdj7d3E9Jo",
+  authDomain: "icydragon-bracket.firebaseapp.com",
+  projectId: "icydragon-bracket",
+  storageBucket: "icydragon-bracket.firebasestorage.app",
+  messagingSenderId: "996781932088",
+  appId: "1:996781932088:web:be25deba8f95f5215770cd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const tournamentRef = doc(db, "tournament", "main");
+
+let tournamentData = null;
+
+onSnapshot(tournamentRef, (snap) => {
+  if (snap.exists()) {
+    tournamentData = snap.data();
+    render();
+  }
+  document.getElementById('loadingDiv').style.display = 'none';
+  document.getElementById('obsContent').style.display = 'block';
+});
+
+function flatToBracket(flat) {
+  const numRounds = flat.numRounds || 0;
+  const bracket = [];
+  for (let r = 0; r < numRounds; r++) {
+    const size = flat[`round${r}_size`] || 0;
+    const round = [];
+    for (let m = 0; m < size; m++) {
+      round.push(flat[`r${r}_m${m}`] || { a: null, b: null, winner: null, votesA: 0, votesB: 0 });
+    }
+    bracket.push(round);
+  }
+  return bracket;
+}
+
+function getBracket() { return flatToBracket(tournamentData); }
+
+function render() {
+  const d = tournamentData;
+  const bracket = getBracket();
+  const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
+
+  // Header
+  document.getElementById('obsRoundTitle').textContent =
+    roundNames[d.currentRound] || 'Tournoi des Franchises';
+  document.getElementById('obsDot').style.background = d.votingOpen ? 'var(--danger)' : 'var(--muted)';
+  document.getElementById('obsStatusText').textContent = d.votingOpen ? 'VOTE OUVERT' : 'En attente';
+
+  // Bottom bar
+  const bar = document.getElementById('currentBar');
+  if (bracket.length > 0 && d.votingOpen) {
+    bar.style.display = 'flex';
+    const round = bracket[d.currentRound] || [];
+    const half = Math.ceil(round.length / 2);
+    const leftMatch = round[d.currentMatchIndex];
+    const rightIdx = round.length - 1 - d.currentMatchIndex;
+    const rightMatch = (rightIdx >= half && rightIdx !== d.currentMatchIndex) ? round[rightIdx] : null;
+
+    if (leftMatch) {
+      document.getElementById('obsNameA').textContent = leftMatch.a || '—';
+      document.getElementById('obsNameB').textContent = leftMatch.b || '—';
+      const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
+      const tot = vA + vB || 1;
+      document.getElementById('obsVotesA').textContent = vA;
+      document.getElementById('obsVotesB').textContent = vB;
+      document.getElementById('obsBarA').style.width = Math.round(vA/tot*100) + '%';
+      document.getElementById('obsBarB').style.width = Math.round(vB/tot*100) + '%';
+    }
+    if (rightMatch) {
+      document.getElementById('obsNameC').textContent = rightMatch.a || '—';
+      document.getElementById('obsNameD').textContent = rightMatch.b || '—';
+      const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
+      const totR = vC + vD || 1;
+      document.getElementById('obsVotesC').textContent = vC;
+      document.getElementById('obsVotesD').textContent = vD;
+      document.getElementById('obsBarC').style.width = Math.round(vC/totR*100) + '%';
+      document.getElementById('obsBarD').style.width = Math.round(vD/totR*100) + '%';
+    }
+  } else {
+    bar.style.display = 'none';
+  }
+
+  renderBracket();
+}
+
+function renderBracket() {
+  const d = tournamentData;
+  const container = document.getElementById('obsBracketContainer');
+  container.innerHTML = '';
+
+  const bracket = getBracket();
+  if (bracket.length === 0) return;
+
+  const MATCH_H = 44;
+  const MATCH_W = 130;
+  const GAP = 28;
+  const ROUND_W = MATCH_W + GAP;
+  const numRounds = bracket.length;
+  const sideRounds = numRounds - 1;
+
+  const left = [], right = [];
+  for (let r = 0; r < numRounds; r++) {
+    const matches = bracket[r];
+    const half = Math.ceil(matches.length / 2);
+    left.push(matches.slice(0, half));
+    right.push(matches.slice(half).reverse());
+  }
+
+  const leftR0count = left[0].length;
+  const SLOT_H = MATCH_H * 2.4;
+  const TOTAL_H = leftR0count * SLOT_H;
+  const finaleCol = sideRounds;
+  const totalW = sideRounds * ROUND_W + MATCH_W + sideRounds * ROUND_W;
+
+  // Scale to fit screen
+  const availW = window.innerWidth - 24;
+  const scale = Math.min(1, availW / totalW);
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;width:' + totalW + 'px;height:' + (TOTAL_H + 50) + 'px;flex-shrink:0;margin-top:32px;transform:scale('+scale+');transform-origin:top center;';
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible;';
+  wrapper.appendChild(svg);
+
+  function drawLine(x1,y1,x2,y2,active,right) {
+    const mx=(x1+x2)/2;
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M'+x1+','+y1+' H'+mx+' V'+y2+' H'+x2);
+    p.setAttribute('fill','none');
+    p.setAttribute('stroke', active ? (right ? '#7c3aed' : '#00c8ff') : '#1e2d45');
+    p.setAttribute('stroke-width', active ? '2' : '1');
+    p.setAttribute('stroke-linecap','round');
+    svg.appendChild(p);
+  }
+
+  function makeCard(match, col, y, origRound, origIdx) {
+    const round = getBracket()[origRound] || [];
+    const half = Math.ceil(round.length / 2);
+    const mirrorIdx = round.length - 1 - d.currentMatchIndex;
+    const isActiveLeft  = origRound === d.currentRound && origIdx === d.currentMatchIndex;
+    const isActiveRight = origRound === d.currentRound && origIdx === mirrorIdx && mirrorIdx >= half && mirrorIdx !== d.currentMatchIndex;
+    const x = col * ROUND_W;
+    const card = document.createElement('div');
+    card.className = 'bracket-match' + (isActiveLeft ? ' active' : isActiveRight ? ' active-right' : '');
+    card.style.cssText = 'position:absolute;left:'+x+'px;top:'+y+'px;width:'+MATCH_W+'px;';
+    const tA = document.createElement('div');
+    const tB = document.createElement('div');
+    tA.className = 'bracket-team' + (match.winner==='A' ? ' winner' : match.winner ? ' loser' : match.a ? '' : ' tbd');
+    tB.className = 'bracket-team' + (match.winner==='B' ? ' winner' : match.winner ? ' loser' : match.b ? '' : ' tbd');
+    const vA=match.votesA||0, vB=match.votesB||0;
+    tA.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis;max-width:90px">'+(match.a||'?')+'</span>'+(match.winner?'<span class="bracket-team-votes">'+vA+'</span>':'');
+    tB.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis;max-width:90px">'+(match.b||'?')+'</span>'+(match.winner?'<span class="bracket-team-votes">'+vB+'</span>':'');
+    card.appendChild(tA); card.appendChild(tB); wrapper.appendChild(card);
+    return { x, y, isActive: isActiveLeft || isActiveRight, isRight: isActiveRight };
+  }
+
+  function addLabel(text, col) {
+    const x = col * ROUND_W;
+    const lbl = document.createElement('div');
+    lbl.className = 'round-header';
+    lbl.textContent = text;
+    lbl.style.cssText = 'position:absolute;left:'+x+'px;top:-28px;width:'+MATCH_W+'px;text-align:center;';
+    wrapper.appendChild(lbl);
+  }
+
+  const roundNames = ['Round of 32','Round of 16','Quarts','Demies','Finale'];
+
+  // LEFT SIDE
+  for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
+    const matches = left[rIdx];
+    const slotH = TOTAL_H / matches.length;
+    const col = rIdx;
+    addLabel(roundNames[rIdx]||('R'+(rIdx+1)), col);
+    matches.forEach((match, mIdx) => {
+      const y = mIdx * slotH + (slotH - MATCH_H) / 2;
+      const pos = makeCard(match, col, y, rIdx, mIdx);
+      if (rIdx < sideRounds - 1) {
+        const nlm = left[rIdx+1];
+        const nSlotH = TOTAL_H / nlm.length;
+        const nY = Math.floor(mIdx/2) * nSlotH + (nSlotH - MATCH_H) / 2;
+        const y2 = (mIdx%2===0) ? nY+11 : nY+MATCH_H-11;
+        drawLine(col*ROUND_W+MATCH_W, y+MATCH_H/2, (col+1)*ROUND_W, y2, pos.isActive, false);
+      }
+    });
+  }
+
+  // LEFT SEMI -> FINALE
+  const lsm = left[sideRounds-1];
+  const lsSlotH = TOTAL_H / lsm.length;
+  const finY = TOTAL_H/2 - MATCH_H/2;
+  lsm.forEach((m, mIdx) => {
+    const sy = mIdx * lsSlotH + (lsSlotH-MATCH_H)/2;
+    const y2 = (mIdx%2===0) ? finY+11 : finY+MATCH_H-11;
+    const isAct = d.currentRound===sideRounds-1 && mIdx===d.currentMatchIndex;
+    drawLine((sideRounds-1)*ROUND_W+MATCH_W, sy+MATCH_H/2, finaleCol*ROUND_W, y2, isAct, false);
+  });
+
+  // FINALE
+  const finaleMatch = bracket[numRounds-1][0];
+  makeCard(finaleMatch, finaleCol, finY, numRounds-1, 0);
+  addLabel('Finale', finaleCol);
+
+  // RIGHT SEMI -> FINALE
+  const rsm = right[sideRounds-1];
+  const rsSlotH = TOTAL_H / rsm.length;
+  rsm.forEach((m, mIdx) => {
+    const sy = mIdx * rsSlotH + (rsSlotH-MATCH_H)/2;
+    const y2 = (mIdx%2===0) ? finY+11 : finY+MATCH_H-11;
+    drawLine(finaleCol*ROUND_W+MATCH_W, y2, (finaleCol+1)*ROUND_W, sy+MATCH_H/2, false, true);
+  });
+
+  // RIGHT SIDE
+  for (let rIdx = sideRounds-1; rIdx >= 0; rIdx--) {
+    const matches = right[rIdx];
+    const slotH = TOTAL_H / matches.length;
+    const colFromCenter = sideRounds-1-rIdx;
+    const col = finaleCol+1+colFromCenter;
+    const half = Math.ceil(bracket[rIdx].length/2);
+    addLabel(roundNames[rIdx]||('R'+(rIdx+1)), col);
+    matches.forEach((match, mIdx) => {
+      const origIdx = half + (matches.length-1-mIdx);
+      const y = mIdx * slotH + (slotH-MATCH_H)/2;
+      const pos = makeCard(match, col, y, rIdx, origIdx);
+      if (colFromCenter > 0) {
+        const innerRM = right[rIdx+1];
+        const iSlotH = TOTAL_H / innerRM.length;
+        const nY = Math.floor(mIdx/2)*iSlotH + (iSlotH-MATCH_H)/2;
+        const innerCol = col-1;
+        const y2 = (mIdx%2===0) ? nY+11 : nY+MATCH_H-11;
+        drawLine(col*ROUND_W, y+MATCH_H/2, innerCol*ROUND_W+MATCH_W, y2, pos.isActive, true);
+      }
+    });
+  }
+
+  const outer = document.createElement('div');
+  outer.style.cssText = 'overflow:hidden;';
+  outer.appendChild(wrapper);
+  container.appendChild(outer);
+}
+</script>
+</body>
+</html>
