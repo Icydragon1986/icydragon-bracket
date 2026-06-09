@@ -1358,7 +1358,7 @@ window.advanceWinner = async function() {
   // Advance LEFT match
   const leftMatch = round[leftIdx];
   const vLA = d.votesLeft?.A || 0, vLB = d.votesLeft?.B || 0;
-  const leftWinnerSide = vLA >= vLB ? 'A' : 'B';
+  const leftWinnerSide = vLA === vLB ? (Math.random() < 0.5 ? 'A' : 'B') : (vLA > vLB ? 'A' : 'B');
   const leftWinner = leftWinnerSide === 'A' ? leftMatch.a : leftMatch.b;
   leftMatch.winner = leftWinnerSide;
   leftMatch.votesA = vLA; leftMatch.votesB = vLB;
@@ -1374,7 +1374,7 @@ window.advanceWinner = async function() {
   if (rightIdx >= half && rightIdx !== leftIdx && round[rightIdx]) {
     const rightMatch = round[rightIdx];
     const vRA = d.votesRight?.A || 0, vRB = d.votesRight?.B || 0;
-    const rightWinnerSide = vRA >= vRB ? 'A' : 'B';
+    const rightWinnerSide = vRA === vRB ? (Math.random() < 0.5 ? 'A' : 'B') : (vRA > vRB ? 'A' : 'B');
     rightWinner = rightWinnerSide === 'A' ? rightMatch.a : rightMatch.b;
     rightMatch.winner = rightWinnerSide;
     rightMatch.votesA = vRA; rightMatch.votesB = vRB;
