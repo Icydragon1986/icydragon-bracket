@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Icydragon Bracket Tournsdfsdfsdfsdfsdfsdfament</title>
+<title>Icydragon Bracket Tournament</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1340,11 +1340,15 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'display:flex;justify-content:flex-start;overflow-x:auto;padding-bottom:16px;padding-top:8px;min-height:' + (TOTAL_H + 60) + 'px;';
-  wrapper.style.margin = '0 auto';
-  wrapper.style.flexShrink = '0';
+  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
   outer.appendChild(wrapper);
   container.appendChild(outer);
+  // Center after DOM is ready
+  setTimeout(() => {
+    const cw = container.offsetWidth;
+    const bw = totalW + 48;
+    if (bw < cw) wrapper.style.marginLeft = Math.floor((cw - bw) / 2) + 'px';
+  }, 50);
 }
 
 function renderAdminFranchises() {
