@@ -1340,15 +1340,11 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
+  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;text-align:center;font-size:0;';
+  wrapper.style.display = 'inline-block';
+  wrapper.style.textAlign = 'left';
   outer.appendChild(wrapper);
   container.appendChild(outer);
-  // Center after DOM is ready
-  setTimeout(() => {
-    const cw = container.offsetWidth;
-    const bw = totalW + 48;
-    if (bw < cw) wrapper.style.marginLeft = Math.floor((cw - bw) / 2) + 'px';
-  }, 50);
 }
 
 function renderAdminFranchises() {
