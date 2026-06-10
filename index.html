@@ -947,7 +947,7 @@
   <div style="max-width:1400px;margin:0 auto;">
     <div class="section-label">Bracket complet</div>
   </div>
-  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; min-width:100%;"></div>
+  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; width:100%; box-sizing:border-box; padding:0 24px;"></div>
 </div>
 
 <script type="module">
@@ -1663,7 +1663,8 @@ window.advanceWinner = async function() {
 
     if (d.currentRound + 1 < bracket.length) {
       const nIdx = Math.floor(rightIdx / 2);
-      if (rightIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = rightWinner;
+      // Right side is mirrored, so invert a/b slot assignment
+      if (rightIdx % 2 === 1) bracket[d.currentRound + 1][nIdx].a = rightWinner;
       else bracket[d.currentRound + 1][nIdx].b = rightWinner;
     }
   }
