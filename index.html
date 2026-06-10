@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Icydragon Bracket Tournament</title>
+<title>Icydragon Bracket Todfgdfgdfgdfgdfgdfurnament</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -947,7 +947,7 @@
   <div style="max-width:1400px;margin:0 auto;padding:0 24px;">
     <div class="section-label">Bracket complet</div>
   </div>
-  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; width:100%; box-sizing:border-box;"></div>
+  <div class="rounds-container" id="bracketContainer"></div>
 </div>
 
 <script type="module">
@@ -1340,9 +1340,8 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;text-align:center;font-size:0;';
-  wrapper.style.display = 'inline-block';
-  wrapper.style.textAlign = 'left';
+  outer.style.cssText = 'display:flex;justify-content:center;overflow-x:auto;padding-bottom:16px;padding-top:8px;';
+  wrapper.style.flexShrink = '0';
   outer.appendChild(wrapper);
   container.appendChild(outer);
 }
