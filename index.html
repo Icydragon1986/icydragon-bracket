@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Icydragon Bracsdfsdfsdfket Tournament</title>
+<title>Icydragon Bracket Tournament</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1340,8 +1340,12 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;width:100%;text-align:center;';
-  wrapper.style.display = 'inline-block';
+  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
+  // Center: calculate left offset so bracket is centered
+  const pageW = window.innerWidth;
+  const bracketW = totalW + 48;
+  const leftOffset = Math.max(0, Math.floor((pageW - bracketW) / 2));
+  wrapper.style.marginLeft = leftOffset + 'px';
   outer.appendChild(wrapper);
   container.appendChild(outer);
 }
