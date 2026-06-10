@@ -943,11 +943,11 @@
 </main>
 
 <!-- BRACKET FULL WIDTH -->
-<div class="bracket-section" style="padding:0 24px 40px;">
-  <div style="max-width:1400px;margin:0 auto;">
+<div class="bracket-section" style="padding:0 0 40px;">
+  <div style="max-width:1400px;margin:0 auto;padding:0 24px;">
     <div class="section-label">Bracket complet</div>
   </div>
-  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; width:100%; box-sizing:border-box; padding:0 24px;"></div>
+  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; width:100%; box-sizing:border-box;"></div>
 </div>
 
 <script type="module">
@@ -1340,7 +1340,7 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;display:flex;justify-content:center;width:100%;';
+  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;display:flex;justify-content:center;width:100%;min-width:0;';
   outer.appendChild(wrapper);
   container.appendChild(outer);
 }
