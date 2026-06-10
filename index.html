@@ -677,23 +677,15 @@
 
   /* LOGOS */
   .contestant-logo {
-    width: 100px;
-    height: 60px;
+    width: 120px;
+    height: 64px;
     object-fit: contain;
-    margin-bottom: 12px;
+    margin: 0 auto 12px;
+    display: block;
     filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
     transition: transform 0.2s;
   }
   .contestant:hover .contestant-logo { transform: scale(1.05); }
-  .contestant-logo-fallback {
-    width: 100px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 12px;
-    font-size: 2rem;
-  }
 
   /* TIMER */
   .timer-ring-wrapper {
@@ -944,7 +936,7 @@
   <div style="max-width:1400px;margin:0 auto;">
     <div class="section-label">Bracket complet</div>
   </div>
-  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center;"></div>
+  <div class="rounds-container" id="bracketContainer" style="overflow-x:auto; display:flex; justify-content:center; min-width:100%;"></div>
 </div>
 
 <script type="module">
@@ -1336,7 +1328,7 @@ function renderBracket() {
   }
 
   const outer = document.createElement('div');
-  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
+  outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;display:flex;justify-content:center;width:100%;';
   outer.appendChild(wrapper);
   container.appendChild(outer);
 }
