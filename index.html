@@ -1348,11 +1348,15 @@ function renderBracket() {
 
   const outer = document.createElement('div');
   outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
-  // Use viewport centering - same as max-width:auto margin:0 auto
+  // Align bracket center with content-centered div center
   requestAnimationFrame(() => {
-    const vw = document.documentElement.clientWidth;
-    const ml = Math.max(0, (vw - totalW) / 2);
-    wrapper.style.marginLeft = ml + 'px';
+    const centered = document.querySelector('.content-centered');
+    if (centered) {
+      const rect = centered.getBoundingClientRect();
+      const contentCenterX = rect.left + rect.width / 2;
+      const ml = Math.max(0, contentCenterX - totalW / 2);
+      wrapper.style.marginLeft = ml + 'px';
+    }
   });
   outer.appendChild(wrapper);
   container.appendChild(outer);
