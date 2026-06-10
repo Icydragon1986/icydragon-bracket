@@ -675,6 +675,26 @@
     67%, 100% { content: '...'; }
   }
 
+  /* LOGOS */
+  .contestant-logo {
+    width: 100px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+    transition: transform 0.2s;
+  }
+  .contestant:hover .contestant-logo { transform: scale(1.05); }
+  .contestant-logo-fallback {
+    width: 100px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 2rem;
+  }
+
   /* TIMER */
   .timer-ring-wrapper {
     position: relative;
@@ -845,6 +865,7 @@
           <div class="matchup-label-side">⬅ Côté gauche</div>
           <div class="matchup-body">
             <div class="contestant" id="contestantA" onclick="castVote('left','A')">
+              <img id="logoA" class="contestant-logo" src="" alt="" onerror="this.style.display='none'">
               <div class="contestant-name" id="nameA">—</div>
               <div class="contestant-votes" id="votesA">0</div>
               <div class="contestant-votes-label">votes</div>
@@ -858,6 +879,7 @@
               </div>
             </div>
             <div class="contestant" id="contestantB" onclick="castVote('left','B')">
+              <img id="logoB" class="contestant-logo" src="" alt="" onerror="this.style.display='none'">
               <div class="contestant-name" id="nameB">—</div>
               <div class="contestant-votes" id="votesB">0</div>
               <div class="contestant-votes-label">votes</div>
@@ -875,6 +897,7 @@
           <div class="matchup-label-side">Côté droit ➡</div>
           <div class="matchup-body">
             <div class="contestant" id="contestantC" onclick="castVote('right','A')">
+              <img id="logoC" class="contestant-logo" src="" alt="" onerror="this.style.display='none'">
               <div class="contestant-name" id="nameC">—</div>
               <div class="contestant-votes" id="votesC">0</div>
               <div class="contestant-votes-label">votes</div>
@@ -888,6 +911,7 @@
               </div>
             </div>
             <div class="contestant" id="contestantD" onclick="castVote('right','B')">
+              <img id="logoD" class="contestant-logo" src="" alt="" onerror="this.style.display='none'">
               <div class="contestant-name" id="nameD">—</div>
               <div class="contestant-votes" id="votesD">0</div>
               <div class="contestant-votes-label">votes</div>
@@ -1056,6 +1080,8 @@ function renderCurrentMatchup() {
   if (leftMatch) {
     document.getElementById('nameA').textContent = leftMatch.a || '—';
     document.getElementById('nameB').textContent = leftMatch.b || '—';
+    setLogo('logoA', leftMatch.a);
+    setLogo('logoB', leftMatch.b);
     const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
     const tot = vA + vB || 1;
     document.getElementById('votesA').textContent = vA;
@@ -1079,6 +1105,8 @@ function renderCurrentMatchup() {
   if (rightMatch) {
     document.getElementById('nameC').textContent = rightMatch.a || '—';
     document.getElementById('nameD').textContent = rightMatch.b || '—';
+    setLogo('logoC', rightMatch.a);
+    setLogo('logoD', rightMatch.b);
     const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
     const totR = vC + vD || 1;
     document.getElementById('votesC').textContent = vC;
@@ -1322,6 +1350,55 @@ function renderAdminFranchises() {
       <button onclick="removeFranchise(${i})">✕</button>
     </div>
   `).join('');
+}
+
+// ========== LOGOS ==========
+const FRANCHISE_LOGOS = {
+  "Adibou": "https://icydragon1986.github.io/icydragon-bracket/logos/adibou.png",
+  "Assassin's Creed": "https://icydragon1986.github.io/icydragon-bracket/logos/assassins_creed.png",
+  "Batman": "https://icydragon1986.github.io/icydragon-bracket/logos/batman.png",
+  "Bomberman": "https://icydragon1986.github.io/icydragon-bracket/logos/bomberman.png",
+  "Castlevania": "https://icydragon1986.github.io/icydragon-bracket/logos/castlevania.png",
+  "Dark Souls": "https://icydragon1986.github.io/icydragon-bracket/logos/dark_souls.png",
+  "Disney Mickey Mouse": "https://icydragon1986.github.io/icydragon-bracket/logos/disney_mickey_mouse.png",
+  "Donkey Kong": "https://icydragon1986.github.io/icydragon-bracket/logos/donkey_kong.png",
+  "Duke Nukem": "https://icydragon1986.github.io/icydragon-bracket/logos/duke_nukem.png",
+  "Final Fantasy": "https://icydragon1986.github.io/icydragon-bracket/logos/final_fantasy.png",
+  "Fire Emblem": "https://icydragon1986.github.io/icydragon-bracket/logos/fire_emblem.png",
+  "Freddi Fish": "https://icydragon1986.github.io/icydragon-bracket/logos/freddi_fish.png",
+  "Garfield": "https://icydragon1986.github.io/icydragon-bracket/logos/garfield.png",
+  "God of War": "https://icydragon1986.github.io/icydragon-bracket/logos/god_of_war.png",
+  "Half Life": "https://icydragon1986.github.io/icydragon-bracket/logos/half_life.png",
+  "Hamtaro": "https://icydragon1986.github.io/icydragon-bracket/logos/hamtaro.png",
+  "Kirby": "https://icydragon1986.github.io/icydragon-bracket/logos/kirby.png",
+  "Mario Bros.": "https://icydragon1986.github.io/icydragon-bracket/logos/mario_bros.png",
+  "MegaMan": "https://icydragon1986.github.io/icydragon-bracket/logos/megaman.png",
+  "Metroid": "https://icydragon1986.github.io/icydragon-bracket/logos/metroid.png",
+  "Phoenix Wright": "https://icydragon1986.github.io/icydragon-bracket/logos/phoenix_wright.png",
+  "Pikmin": "https://icydragon1986.github.io/icydragon-bracket/logos/pikmin.png",
+  "Pokemon": "https://icydragon1986.github.io/icydragon-bracket/logos/pokemon.png",
+  "Secret of Mana": "https://icydragon1986.github.io/icydragon-bracket/logos/secret_of_mana.png",
+  "Silent Hill": "https://icydragon1986.github.io/icydragon-bracket/logos/silent_hill.png",
+  "Sly Cooper": "https://icydragon1986.github.io/icydragon-bracket/logos/sly_cooper.png",
+  "Sonic": "https://icydragon1986.github.io/icydragon-bracket/logos/sonic.png",
+  "Teenage Mutant Ninja Turtles": "https://icydragon1986.github.io/icydragon-bracket/logos/tmnt.png",
+  "Tomb Raider": "https://icydragon1986.github.io/icydragon-bracket/logos/tomb_raider.png",
+  "The Elder Scrolls": "https://icydragon1986.github.io/icydragon-bracket/logos/elder_scrolls.png",
+  "Uncharted": "https://icydragon1986.github.io/icydragon-bracket/logos/uncharted.png",
+  "Wario": "https://icydragon1986.github.io/icydragon-bracket/logos/wario.png"
+};
+
+function setLogo(id, name) {
+  const img = document.getElementById(id);
+  if (!img) return;
+  const url = FRANCHISE_LOGOS[name];
+  if (url) {
+    img.src = url;
+    img.alt = name;
+    img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+  }
 }
 
 // ========== TIMER ==========
