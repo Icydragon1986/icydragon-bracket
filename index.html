@@ -895,6 +895,19 @@
   </div>
 </header>
 
+<!-- BYE MODAL -->
+<div class="modal-overlay" id="byeModal">
+  <div class="modal">
+    <h3 id="byeModalTitle">Déclarer un Bye</h3>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;">Quelle franchise avance sans voter?</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-success" id="byeBtnA" onclick="confirmBye('A')">—</button>
+      <button class="btn btn-success" id="byeBtnB" onclick="confirmBye('B')">—</button>
+    </div>
+    <button class="btn btn-secondary" onclick="closeByeModal()" style="width:100%;">Annuler</button>
+  </div>
+</div>
+
 <!-- ADMIN PASSWORD MODAL -->
 <div class="modal-overlay" id="adminModal">
   <div class="modal">
@@ -965,6 +978,10 @@
             </div>
             <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote manuellement</button>
             <button class="btn btn-success" onclick="advanceWinner()">✓ Avancer le(s) gagnant(s)</button>
+            <div style="display:flex;gap:8px;width:100%;">
+              <button class="btn btn-secondary" onclick="declareBye('left')" style="flex:1;">🚫 Bye ⬅ Gauche</button>
+              <button class="btn btn-secondary" onclick="declareBye('right')" style="flex:1;">Bye Droit ➡ 🚫</button>
+            </div>
             <button class="btn btn-secondary" onclick="resetTournament()">↺ Réinitialiser tout</button>
             <button class="btn btn-secondary" onclick="toggleSeedPanel()">🎯 Seed manuel</button>
           </div>
@@ -1505,6 +1522,94 @@ function renderAdminFranchises() {
     </div>
   `).join('');
 }
+
+// ========== BYE ==========
+let byeSide = null; // 'left' or 'right'
+
+window.declareBye = function(side) {
+  const d = tournamentData;
+  const bracket = getBracket();
+  if (!bracket.length) { showStatus('Pas de bracket actif!', 'error'); return; }
+
+  const round = bracket[d.currentRound];
+  const half = Math.ceil(round.length / 2);
+  const leftIdx  = d.currentMatchIndex;
+  const rightIdx = round.length - 1 - leftIdx;
+
+  let match;
+  if (side === 'left') {
+    match = round[leftIdx];
+  } else {
+    match = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
+  }
+
+  if (!match || (!match.a && !match.b)) {
+    showStatus('Pas de match disponible de ce côté!', 'error');
+    return;
+  }
+
+  byeSide = side;
+  const label = side === 'left' ? '⬅ Côté Gauche' : 'Côté Droit ➡';
+  document.getElementById('byeModalTitle').textContent = 'Bye — ' + label;
+  document.getElementById('byeBtnA').textContent = '✓ ' + (match.a || '?') + ' avance';
+  document.getElementById('byeBtnB').textContent = '✓ ' + (match.b || '?') + ' avance';
+  document.getElementById('byeModal').classList.add('open');
+};
+
+window.confirmBye = async function(winnerSide) {
+  const d = tournamentData;
+  const bracket = getBracket();
+  const round = bracket[d.currentRound];
+  const half = Math.ceil(round.length / 2);
+  const leftIdx  = d.currentMatchIndex;
+  const rightIdx = round.length - 1 - leftIdx;
+
+  const matchIdx = byeSide === 'left' ? leftIdx : rightIdx;
+  const match = round[matchIdx];
+  const winner = winnerSide === 'A' ? match.a : match.b;
+
+  // Mark as won with 0 votes (bye)
+  match.winner = winnerSide;
+  match.votesA = winnerSide === 'A' ? 1 : 0;
+  match.votesB = winnerSide === 'B' ? 1 : 0;
+
+  // Place winner in next round
+  if (d.currentRound + 1 < bracket.length) {
+    const nIdx = Math.floor(matchIdx / 2);
+    if (matchIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = winner;
+    else bracket[d.currentRound + 1][nIdx].b = winner;
+  }
+
+  // If both sides are now done, advance match index
+  const otherIdx = byeSide === 'left' ? rightIdx : leftIdx;
+  const otherMatch = round[otherIdx];
+  const bothDone = match.winner && (otherMatch?.winner || otherIdx < half === false);
+
+  let nextMatchIndex = d.currentMatchIndex;
+  let nextRound = d.currentRound;
+
+  // Only advance if the OTHER side match is also completed
+  if (otherMatch && otherMatch.winner) {
+    nextMatchIndex = leftIdx + 1;
+    if (nextMatchIndex >= half) { nextRound++; nextMatchIndex = 0; }
+  }
+
+  const flat = bracketToFlat(bracket);
+  await updateDoc(tournamentRef, {
+    ...flat,
+    currentMatchIndex: nextMatchIndex,
+    currentRound: nextRound,
+    votingOpen: false,
+  });
+
+  closeByeModal();
+  showStatus(winner + ' avance par bye!', 'success');
+};
+
+window.closeByeModal = function() {
+  document.getElementById('byeModal').classList.remove('open');
+  byeSide = null;
+};
 
 // ========== SEED MANUEL ==========
 let selectedFranchise = null;  // currently selected chip
