@@ -1341,10 +1341,10 @@ function renderBracket() {
 
   const outer = document.createElement('div');
   outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
-  // Center: calculate left offset so bracket is centered
-  const pageW = window.innerWidth;
+  // Center: use container width directly
+  const containerW = outer.parentElement ? outer.parentElement.offsetWidth : document.documentElement.clientWidth;
   const bracketW = totalW + 48;
-  const leftOffset = Math.max(0, Math.floor((pageW - bracketW) / 2));
+  const leftOffset = Math.max(0, Math.floor((containerW - bracketW) / 2));
   wrapper.style.marginLeft = leftOffset + 'px';
   outer.appendChild(wrapper);
   container.appendChild(outer);
