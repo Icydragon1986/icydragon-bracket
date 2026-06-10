@@ -688,6 +688,117 @@
     67%, 100% { content: '...'; }
   }
 
+  /* SEED MANUAL */
+  .seed-panel {
+    display: none;
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  .seed-panel.open { display: block; }
+
+  .seed-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+  }
+
+  .seed-pool {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 200px;
+  }
+
+  .seed-pool h4 {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .seed-slots {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .seed-slot {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .seed-slot:hover { border-color: var(--accent); }
+  .seed-slot.filled { border-style: solid; border-color: var(--accent); background: rgba(0,200,255,0.05); }
+  .seed-slot.right-side { border-color: var(--border); }
+  .seed-slot.right-side.filled { border-color: var(--accent2); background: rgba(124,58,237,0.05); }
+
+  .seed-slot-num {
+    font-size: 0.65rem;
+    color: var(--muted);
+    flex-shrink: 0;
+    min-width: 16px;
+  }
+
+  .seed-slot-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .seed-slot-clear {
+    color: var(--danger);
+    font-size: 0.7rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .seed-slot.filled .seed-slot-clear { display: block; }
+
+  .seed-franchise-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .seed-franchise-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .seed-franchise-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .seed-franchise-chip.placed { opacity: 0.35; pointer-events: none; }
+
+  .seed-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
   /* LOGOS */
   .contestant-logo {
     width: 260px;
@@ -855,8 +966,30 @@
             <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote manuellement</button>
             <button class="btn btn-success" onclick="advanceWinner()">✓ Avancer le(s) gagnant(s)</button>
             <button class="btn btn-secondary" onclick="resetTournament()">↺ Réinitialiser tout</button>
+            <button class="btn btn-secondary" onclick="toggleSeedPanel()">🎯 Seed manuel</button>
           </div>
           <div class="status-msg" id="adminStatus"></div>
+
+          <!-- SEED PANEL -->
+          <div class="seed-panel" id="seedPanel">
+            <div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">
+              Clique sur une franchise puis sur un slot pour la placer. Les slots vides seront randomisés.
+            </div>
+            <div class="seed-grid">
+              <div class="seed-pool">
+                <h4>Franchises disponibles</h4>
+                <div class="seed-franchise-list" id="seedFranchiseList"></div>
+              </div>
+              <div class="seed-pool">
+                <h4>Positions du bracket</h4>
+                <div class="seed-slots" id="seedSlots"></div>
+              </div>
+            </div>
+            <div class="seed-actions">
+              <button class="btn btn-gold" onclick="generateBracketSeeded()">🎯 Générer avec ce seed</button>
+              <button class="btn btn-secondary" onclick="clearSeed()">✕ Effacer tout</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1372,6 +1505,147 @@ function renderAdminFranchises() {
     </div>
   `).join('');
 }
+
+// ========== SEED MANUEL ==========
+let selectedFranchise = null;  // currently selected chip
+let seedPositions = {};        // slot index -> franchise name
+
+window.toggleSeedPanel = function() {
+  const panel = document.getElementById('seedPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) renderSeedPanel();
+};
+
+function renderSeedPanel() {
+  const franchises = tournamentData?.franchises || [];
+  const size = (() => { let s=1; while(s<franchises.length) s*=2; return s; })();
+  const half = size / 2;
+
+  // Franchise chips
+  const chipList = document.getElementById('seedFranchiseList');
+  chipList.innerHTML = franchises.map(f => {
+    const placed = Object.values(seedPositions).includes(f);
+    return `<div class="seed-franchise-chip${placed?' placed':''}" onclick="selectSeedFranchise(this,'${f.replace(/'/g,"\'")}')">${f}</div>`;
+  }).join('');
+
+  // Slots
+  const slotsEl = document.getElementById('seedSlots');
+  slotsEl.innerHTML = '';
+  for (let i = 0; i < size; i++) {
+    const isRight = i >= half;
+    const name = seedPositions[i] || '';
+    const slot = document.createElement('div');
+    slot.className = `seed-slot${name?' filled':''}${isRight?' right-side':''}`;
+    slot.dataset.index = i;
+    slot.onclick = () => assignSeedSlot(i);
+    slot.innerHTML = `
+      <span class="seed-slot-num">${i+1}</span>
+      <span class="seed-slot-name">${name || '<span style="color:var(--muted);font-style:italic">aléatoire</span>'}</span>
+      ${name ? `<span class="seed-slot-clear" onclick="event.stopPropagation();clearSeedSlot(${i})">✕</span>` : ''}
+    `;
+    slotsEl.appendChild(slot);
+  }
+}
+
+window.selectSeedFranchise = function(el, name) {
+  if (el.classList.contains('placed')) return;
+  selectedFranchise = name;
+  document.querySelectorAll('.seed-franchise-chip').forEach(c => c.style.outline = '');
+  el.style.outline = '2px solid var(--accent)';
+};
+
+window.assignSeedSlot = function(index) {
+  if (!selectedFranchise) return;
+  // Remove from previous slot if already placed
+  for (const [k, v] of Object.entries(seedPositions)) {
+    if (v === selectedFranchise) delete seedPositions[k];
+  }
+  seedPositions[index] = selectedFranchise;
+  selectedFranchise = null;
+  renderSeedPanel();
+};
+
+window.clearSeedSlot = function(index) {
+  delete seedPositions[index];
+  renderSeedPanel();
+};
+
+window.clearSeed = function() {
+  seedPositions = {};
+  selectedFranchise = null;
+  renderSeedPanel();
+};
+
+window.generateBracketSeeded = async function() {
+  const franchises = [...(tournamentData?.franchises || [])];
+  if (franchises.length < 2) { showStatus('Pas assez de franchises!', 'error'); return; }
+
+  // Pad to power of 2
+  let size = 1;
+  while (size < franchises.length) size *= 2;
+
+  // Start with seeded positions
+  const slots = new Array(size).fill(null);
+  const placed = new Set();
+
+  for (const [idx, name] of Object.entries(seedPositions)) {
+    const i = parseInt(idx);
+    if (i < size && franchises.includes(name)) {
+      slots[i] = name;
+      placed.add(name);
+    }
+  }
+
+  // Shuffle remaining franchises into empty slots
+  const remaining = franchises.filter(f => !placed.has(f));
+  for (let i = remaining.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+  }
+
+  let ri = 0;
+  for (let i = 0; i < size; i++) {
+    if (!slots[i]) slots[i] = remaining[ri++] || null;
+  }
+
+  // Build bracket from slots (first half = left, second half = right)
+  const half = size / 2;
+  const round0 = [];
+  // Left side: slots 0..half-1, paired (0,1),(2,3)...
+  for (let i = 0; i < half; i += 2) {
+    round0.push({ a: slots[i], b: slots[i+1]||null, winner: null, votesA: 0, votesB: 0 });
+  }
+  // Right side: slots half..size-1, paired (half,half+1)...
+  for (let i = half; i < size; i += 2) {
+    round0.push({ a: slots[i], b: slots[i+1]||null, winner: null, votesA: 0, votesB: 0 });
+  }
+
+  const bracket = [round0];
+  let prevSize = round0.length;
+  while (prevSize > 1) {
+    prevSize = Math.ceil(prevSize / 2);
+    bracket.push(Array.from({ length: prevSize }, () => ({ a: null, b: null, winner: null, votesA: 0, votesB: 0 })));
+  }
+
+  const flat = bracketToFlat(bracket);
+  await setDoc(tournamentRef, {
+    franchises: tournamentData.franchises,
+    ...flat,
+    currentMatchIndex: 0,
+    currentRound: 0,
+    votingOpen: false,
+    votesLeft:  { A: 0, B: 0 },
+    votesRight: { A: 0, B: 0 },
+    matchIdLeft:  Date.now().toString() + '_L',
+    matchIdRight: Date.now().toString() + '_R',
+    winner: null,
+    status: 'active'
+  });
+
+  seedPositions = {};
+  document.getElementById('seedPanel').classList.remove('open');
+  showStatus('Bracket généré avec seed!', 'success');
+};
 
 // ========== LOGOS ==========
 const FRANCHISE_LOGOS = {
