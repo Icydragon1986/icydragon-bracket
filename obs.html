@@ -155,6 +155,16 @@
     padding: 2px 4px;
   }
 
+  /* LOGOS IN BOTTOM BAR */
+  .obs-logo {
+    height: 36px;
+    width: 80px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 4px;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.8));
+  }
+
   /* CURRENT MATCHUP OVERLAY — bottom bar */
   .current-bar {
     position: fixed;
@@ -270,6 +280,7 @@
     <!-- Left matchup -->
     <div class="current-matchup">
       <div>
+        <img id="obsLogoA" class="obs-logo" src="" alt="" onerror="this.style.display='none'">
         <div class="current-name" id="obsNameA" style="color:var(--accent)">—</div>
         <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarA" style="width:50%;background:var(--accent)"></div></div>
       </div>
@@ -281,6 +292,7 @@
         <div class="current-votes" id="obsVotesB">0</div>
       </div>
       <div>
+        <img id="obsLogoB" class="obs-logo" src="" alt="" onerror="this.style.display='none'">
         <div class="current-name" id="obsNameB" style="color:var(--text);text-align:right">—</div>
         <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarB" style="width:50%;background:var(--accent2)"></div></div>
       </div>
@@ -291,6 +303,7 @@
     <!-- Right matchup -->
     <div class="current-matchup">
       <div>
+        <img id="obsLogoC" class="obs-logo" src="" alt="" onerror="this.style.display='none'">
         <div class="current-name" id="obsNameC" style="color:var(--accent2)">—</div>
         <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarC" style="width:50%;background:var(--accent2)"></div></div>
       </div>
@@ -302,6 +315,7 @@
         <div class="current-votes right" id="obsVotesD">0</div>
       </div>
       <div>
+        <img id="obsLogoD" class="obs-logo" src="" alt="" onerror="this.style.display='none'">
         <div class="current-name" id="obsNameD" style="color:var(--text);text-align:right">—</div>
         <div class="vote-bar-mini"><div class="vote-bar-mini-fill" id="obsBarD" style="width:50%;background:var(--accent)"></div></div>
       </div>
@@ -355,6 +369,50 @@ function flatToBracket(flat) {
 
 function getBracket() { return flatToBracket(tournamentData); }
 
+const BASE = 'https://icydragon1986.github.io/icydragon-bracket/logos/';
+const FRANCHISE_LOGOS = {
+  "Adibou": BASE+"adibou.png",
+  "Assassin's Creed": BASE+"assassins_creed.png",
+  "Batman": BASE+"batman.png",
+  "Bomberman": BASE+"bomberman.png",
+  "Castlevania": BASE+"castlevania.png",
+  "Dark Souls": BASE+"dark_souls.png",
+  "Disney Mickey Mouse": BASE+"disney_mickey_mouse.png",
+  "Donkey Kong": BASE+"donkey_kong.png",
+  "Duke Nukem": BASE+"duke_nukem.png",
+  "Final Fantasy": BASE+"final_fantasy.png",
+  "Fire Emblem": BASE+"fire_emblem.png",
+  "Freddi Fish": BASE+"freddi_fish.png",
+  "Garfield": BASE+"garfield.png",
+  "God of War": BASE+"god_of_war.png",
+  "Half Life": BASE+"half_life.png",
+  "Hamtaro": BASE+"hamtaro.png",
+  "Kirby": BASE+"kirby.png",
+  "Mario Bros.": BASE+"mario_bros.png",
+  "MegaMan": BASE+"megaman.png",
+  "Metroid": BASE+"metroid.png",
+  "Phoenix Wright": BASE+"phoenix_wright.png",
+  "Pikmin": BASE+"pikmin.png",
+  "Pokemon": BASE+"pokemon.png",
+  "Secret of Mana": BASE+"secret_of_mana.png",
+  "Silent Hill": BASE+"silent_hill.png",
+  "Sly Cooper": BASE+"sly_cooper.png",
+  "Sonic": BASE+"sonic.png",
+  "Teenage Mutant Ninja Turtles": BASE+"tmnt.png",
+  "Tomb Raider": BASE+"tomb_raider.png",
+  "The Elder Scrolls": BASE+"elder_scrolls.png",
+  "Uncharted": BASE+"uncharted.png",
+  "Wario": BASE+"wario.png"
+};
+
+function setObsLogo(id, name) {
+  const img = document.getElementById(id);
+  if (!img) return;
+  const url = FRANCHISE_LOGOS[name];
+  if (url) { img.src = url; img.style.display = 'block'; }
+  else { img.style.display = 'none'; }
+}
+
 function render() {
   const d = tournamentData;
   const bracket = getBracket();
@@ -378,6 +436,8 @@ function render() {
 
     if (leftMatch) {
       document.getElementById('obsNameA').textContent = leftMatch.a || '—';
+      setObsLogo('obsLogoA', leftMatch.a || '');
+      setObsLogo('obsLogoB', leftMatch.b || '');
       document.getElementById('obsNameB').textContent = leftMatch.b || '—';
       const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
       const tot = vA + vB || 1;
@@ -388,6 +448,8 @@ function render() {
     }
     if (rightMatch) {
       document.getElementById('obsNameC').textContent = rightMatch.a || '—';
+      setObsLogo('obsLogoC', rightMatch.a || '');
+      setObsLogo('obsLogoD', rightMatch.b || '');
       document.getElementById('obsNameD').textContent = rightMatch.b || '—';
       const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
       const totR = vC + vD || 1;
