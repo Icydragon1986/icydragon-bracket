@@ -1523,26 +1523,72 @@ function renderSeedPanel() {
 
   // Franchise chips
   const chipList = document.getElementById('seedFranchiseList');
-  chipList.innerHTML = franchises.map(f => {
+  chipList.innerHTML = '';
+  franchises.forEach(f => {
     const placed = Object.values(seedPositions).includes(f);
-    return `<div class="seed-franchise-chip${placed?' placed':''}" onclick="selectSeedFranchise(this,'${f.replace(/'/g,"\'")}')">${f}</div>`;
-  }).join('');
+    const chip = document.createElement('div');
+    chip.className = 'seed-franchise-chip' + (placed ? ' placed' : '');
+    chip.textContent = f;
+    chip.dataset.name = f;
+    chip.addEventListener('click', () => selectSeedFranchise(chip, f));
+    chipList.appendChild(chip);
+  });
 
-  // Slots
+  // Slots — show as match pairs (Position 1 vs 2, 3 vs 4, etc.)
   const slotsEl = document.getElementById('seedSlots');
   slotsEl.innerHTML = '';
-  for (let i = 0; i < size; i++) {
-    const isRight = i >= half;
+
+  // Left side header
+  const leftHeader = document.createElement('div');
+  leftHeader.style.cssText = 'grid-column:1/-1;font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);padding:4px 0 2px;';
+  leftHeader.textContent = '⬅ Côté gauche (positions 1-' + half + ')';
+  slotsEl.appendChild(leftHeader);
+
+  for (let i = 0; i < half; i++) {
     const name = seedPositions[i] || '';
     const slot = document.createElement('div');
-    slot.className = `seed-slot${name?' filled':''}${isRight?' right-side':''}`;
+    slot.className = 'seed-slot' + (name ? ' filled' : '');
     slot.dataset.index = i;
-    slot.onclick = () => assignSeedSlot(i);
-    slot.innerHTML = `
-      <span class="seed-slot-num">${i+1}</span>
-      <span class="seed-slot-name">${name || '<span style="color:var(--muted);font-style:italic">aléatoire</span>'}</span>
-      ${name ? `<span class="seed-slot-clear" onclick="event.stopPropagation();clearSeedSlot(${i})">✕</span>` : ''}
-    `;
+    slot.addEventListener('click', () => assignSeedSlot(i));
+    const nameEl = document.createElement('span');
+    nameEl.className = 'seed-slot-name';
+    nameEl.innerHTML = name || '<span style="color:var(--muted);font-style:italic">aléatoire</span>';
+    slot.innerHTML = `<span class="seed-slot-num">${i+1}</span>`;
+    slot.appendChild(nameEl);
+    if (name) {
+      const clear = document.createElement('span');
+      clear.className = 'seed-slot-clear';
+      clear.textContent = '✕';
+      clear.addEventListener('click', (e) => { e.stopPropagation(); clearSeedSlot(i); });
+      slot.appendChild(clear);
+    }
+    slotsEl.appendChild(slot);
+  }
+
+  // Right side header
+  const rightHeader = document.createElement('div');
+  rightHeader.style.cssText = 'grid-column:1/-1;font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);padding:8px 0 2px;';
+  rightHeader.textContent = 'Côté droit ➡ (positions ' + (half+1) + '-' + size + ')';
+  slotsEl.appendChild(rightHeader);
+
+  for (let i = half; i < size; i++) {
+    const name = seedPositions[i] || '';
+    const slot = document.createElement('div');
+    slot.className = 'seed-slot right-side' + (name ? ' filled' : '');
+    slot.dataset.index = i;
+    slot.addEventListener('click', () => assignSeedSlot(i));
+    const nameEl = document.createElement('span');
+    nameEl.className = 'seed-slot-name';
+    nameEl.innerHTML = name || '<span style="color:var(--muted);font-style:italic">aléatoire</span>';
+    slot.innerHTML = `<span class="seed-slot-num">${i+1}</span>`;
+    slot.appendChild(nameEl);
+    if (name) {
+      const clear = document.createElement('span');
+      clear.className = 'seed-slot-clear';
+      clear.textContent = '✕';
+      clear.addEventListener('click', (e) => { e.stopPropagation(); clearSeedSlot(i); });
+      slot.appendChild(clear);
+    }
     slotsEl.appendChild(slot);
   }
 }
