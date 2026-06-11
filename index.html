@@ -2187,9 +2187,16 @@ window.advanceWinner = async function() {
 
     if (d.currentRound + 1 < bracket.length) {
       const nIdx = Math.floor(rightIdx / 2);
-      // Right side: odd index -> slot b, even -> slot a (same as left)
-      if (rightIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = rightWinner;
-      else bracket[d.currentRound + 1][nIdx].b = rightWinner;
+      // Right side: inverted slot assignment to match visual display
+      // Exception: semi->finale, right winner goes to .b
+      const isLastBeforeFinale = d.currentRound === bracket.length - 2;
+      if (isLastBeforeFinale) {
+        bracket[d.currentRound + 1][nIdx].b = rightWinner;
+      } else if (rightIdx % 2 === 1) {
+        bracket[d.currentRound + 1][nIdx].a = rightWinner;
+      } else {
+        bracket[d.currentRound + 1][nIdx].b = rightWinner;
+      }
     }
   }
 
