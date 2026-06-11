@@ -1014,7 +1014,7 @@
     <!-- CURRENT MATCHUP -->
     <div class="current-matchup-section" id="currentMatchupSection">
       <div class="section-label">Matchups en cours</div>
-      <div class="dual-matchup-grid">
+      <div class="dual-matchup-grid" id="dualMatchupGrid">
 
         <!-- LEFT MATCHUP -->
         <div class="big-matchup">
@@ -1049,7 +1049,7 @@
         </div>
 
         <!-- RIGHT MATCHUP -->
-        <div class="big-matchup">
+        <div class="big-matchup" id="rightMatchupDiv">
           <div class="matchup-header">
             <span class="round-badge" id="currentRoundBadgeRight">Round 1</span>
             <span class="vote-timer" id="voteStatusRight">En attente...</span>
@@ -1212,6 +1212,13 @@ function renderCurrentMatchup() {
   const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
 
   const roundName = roundNames[d.currentRound] || ('Round ' + (d.currentRound + 1));
+  const isFinale = d.currentRound === bracket.length - 1;
+  const grid = document.getElementById('dualMatchupGrid');
+  const rightDiv = document.getElementById('rightMatchupDiv');
+
+  // Finale = single matchup, hide right side
+  if (grid) grid.style.gridTemplateColumns = isFinale ? '1fr' : '1fr 1fr';
+  if (rightDiv) rightDiv.style.display = isFinale ? 'none' : '';
 
   if (bracket.length === 0) {
     ['nameA','nameB','nameC','nameD'].forEach(id => document.getElementById(id).textContent = '?');
@@ -2180,8 +2187,8 @@ window.advanceWinner = async function() {
 
     if (d.currentRound + 1 < bracket.length) {
       const nIdx = Math.floor(rightIdx / 2);
-      // Right side is mirrored, so invert a/b slot assignment
-      if (rightIdx % 2 === 1) bracket[d.currentRound + 1][nIdx].a = rightWinner;
+      // Right side: odd index -> slot b, even -> slot a (same as left)
+      if (rightIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = rightWinner;
       else bracket[d.currentRound + 1][nIdx].b = rightWinner;
     }
   }
@@ -2193,7 +2200,8 @@ window.advanceWinner = async function() {
   if (nextMatchIndex >= half) { nextRound++; nextMatchIndex = 0; }
 
   let tournamentWinner = null;
-  if (d.currentRound === bracket.length - 1 && leftIdx === 0) {
+  // Finale = last round, only 1 match (index 0)
+  if (d.currentRound === bracket.length - 1) {
     tournamentWinner = leftWinner;
   }
 
