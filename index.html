@@ -1847,26 +1847,58 @@ function setLogo(id, name) {
   }
 }
 
-// ========== STREAMER.BOT HTTP ==========
+// ========== STREAMER.BOT WEBSOCKET ==========
 const SB_ACTION_ID = 'b70ccb10-b461-448d-b3e6-c601d58bd078';
+let sbSocket = null;
+let sbConnected = false;
+let sbQueue = [];
 
-async function sendTwitchMessage(msg) {
+function connectStreamerBot() {
   try {
-    await fetch('http://127.0.0.1:7474/DoAction', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: { id: SB_ACTION_ID },
-        args: { message: msg }
-      })
-    });
-    console.log('[Streamer.bot] Message envoyé:', msg);
+    sbSocket = new WebSocket('ws://127.0.0.1:8080/');
+    sbSocket.onopen = () => {
+      sbConnected = true;
+      console.log('[Streamer.bot] Connecté!');
+      // Send any queued messages
+      sbQueue.forEach(msg => sendSBAction(msg));
+      sbQueue = [];
+    };
+    sbSocket.onclose = () => { sbConnected = false; sbSocket = null; };
+    sbSocket.onerror = () => { sbConnected = false; sbSocket = null; };
+    sbSocket.onmessage = (e) => {
+      // Handle hello/auth if needed
+      try {
+        const data = JSON.parse(e.data);
+        console.log('[Streamer.bot]', data);
+      } catch(err) {}
+    };
   } catch(e) {
-    console.warn('[Streamer.bot] Erreur:', e);
+    console.warn('[Streamer.bot] Connexion échouée:', e);
   }
 }
 
-function initStreamerBot() {} // no-op, HTTP needs no init
+function sendSBAction(msg) {
+  if (!sbSocket || sbSocket.readyState !== WebSocket.OPEN) return;
+  sbSocket.send(JSON.stringify({
+    request: 'DoAction',
+    id: 'bracket-' + Date.now(),
+    action: { id: SB_ACTION_ID },
+    args: { message: msg }
+  }));
+}
+
+function sendTwitchMessage(msg) {
+  if (sbConnected && sbSocket?.readyState === WebSocket.OPEN) {
+    sendSBAction(msg);
+  } else {
+    sbQueue.push(msg);
+    connectStreamerBot();
+  }
+}
+
+function initStreamerBot() {
+  connectStreamerBot();
+}
 
 // ========== TIMER ==========
 let timerInterval = null;
