@@ -1847,6 +1847,32 @@ function setLogo(id, name) {
   }
 }
 
+// ========== STREAMER.BOT WEBSOCKET ==========
+let sbSocket = null;
+
+function connectStreamerBot() {
+  try {
+    sbSocket = new WebSocket('ws://127.0.0.1:8080');
+    sbSocket.onopen = () => console.log('[Streamer.bot] Connecté!');
+    sbSocket.onclose = () => { sbSocket = null; };
+    sbSocket.onerror = () => { sbSocket = null; };
+  } catch(e) { sbSocket = null; }
+}
+
+function sendTwitchMessage(msg) {
+  if (!sbSocket || sbSocket.readyState !== WebSocket.OPEN) {
+    connectStreamerBot();
+    setTimeout(() => sendTwitchMessage(msg), 800);
+    return;
+  }
+  sbSocket.send(msg);
+}
+
+// Try to connect when admin logs in
+function initStreamerBot() {
+  connectStreamerBot();
+}
+
 // ========== TIMER ==========
 let timerInterval = null;
 
@@ -2063,6 +2089,28 @@ window.openVoting = async function() {
     timerStartedAt: Date.now()
   });
   showStatus('Vote ouvert! Timer: ' + minutes + ' min', 'success');
+
+  // Announce on Twitch via Streamer.bot
+  const d = tournamentData;
+  const bracket = flatToBracket(d);
+  if (bracket.length > 0) {
+    const round = bracket[d.currentRound] || [];
+    const half = Math.ceil(round.length / 2);
+    const leftIdx = d.currentMatchIndex;
+    const rightIdx = round.length - 1 - leftIdx;
+    const leftMatch = round[leftIdx];
+    const rightMatch = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
+
+    const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
+    const roundName = roundNames[d.currentRound] || ('Round ' + (d.currentRound+1));
+
+    let msg = '🏆 [' + roundName + '] Vote ouvert! ';
+    if (leftMatch) msg += leftMatch.a + ' vs ' + leftMatch.b;
+    if (rightMatch) msg += ' ⚔ ' + rightMatch.a + ' vs ' + rightMatch.b;
+    msg += ' → https://icydragon1986.github.io/icydragon-bracket';
+
+    sendTwitchMessage(msg);
+  }
 };
 
 window.closeVoting = async function() {
@@ -2195,6 +2243,7 @@ window.checkAdmin = function() {
     document.getElementById('adminPanel').classList.add('open');
     closeAdminModal();
     renderAdminFranchises();
+    initStreamerBot();
   } else {
     const err = document.getElementById('adminError');
     err.textContent = 'Mot de passe incorrect.';
