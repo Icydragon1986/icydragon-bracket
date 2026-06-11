@@ -1847,31 +1847,26 @@ function setLogo(id, name) {
   }
 }
 
-// ========== STREAMER.BOT WEBSOCKET ==========
-let sbSocket = null;
+// ========== STREAMER.BOT HTTP ==========
+const SB_ACTION_ID = 'b70ccb10-b461-448d-b3e6-c601d58bd078';
 
-function connectStreamerBot() {
+async function sendTwitchMessage(msg) {
   try {
-    sbSocket = new WebSocket('ws://127.0.0.1:8080');
-    sbSocket.onopen = () => console.log('[Streamer.bot] Connecté!');
-    sbSocket.onclose = () => { sbSocket = null; };
-    sbSocket.onerror = () => { sbSocket = null; };
-  } catch(e) { sbSocket = null; }
-}
-
-function sendTwitchMessage(msg) {
-  if (!sbSocket || sbSocket.readyState !== WebSocket.OPEN) {
-    connectStreamerBot();
-    setTimeout(() => sendTwitchMessage(msg), 800);
-    return;
+    await fetch('http://127.0.0.1:7474/DoAction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: { id: SB_ACTION_ID },
+        args: { message: msg }
+      })
+    });
+    console.log('[Streamer.bot] Message envoyé:', msg);
+  } catch(e) {
+    console.warn('[Streamer.bot] Erreur:', e);
   }
-  sbSocket.send(msg);
 }
 
-// Try to connect when admin logs in
-function initStreamerBot() {
-  connectStreamerBot();
-}
+function initStreamerBot() {} // no-op, HTTP needs no init
 
 // ========== TIMER ==========
 let timerInterval = null;
