@@ -921,7 +921,7 @@
     background: rgba(16, 185, 129, 0.08);
     border-color: rgba(16, 185, 129, 0.3);
     color: var(--win);
-    cursor: default;
+    cursor: pointer;
     animation: none;
     box-shadow: none;
     text-transform: none;
@@ -929,6 +929,7 @@
     font-weight: 600;
     letter-spacing: 0.5px;
   }
+  #audioUnlockBanner.active:hover { background: rgba(16, 185, 129, 0.15); }
 </style>
 </head>
 <body>
@@ -1910,23 +1911,27 @@ window.unlockAudio = function() {
   audioUnlocked = true;
   const banner = document.getElementById('audioUnlockBanner');
   if (banner) {
-    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre!';
+    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre! (Cliquer pour désactiver)';
     banner.classList.add('active');
-    banner.onclick = null;
+    banner.onclick = () => toggleAudio();
   }
 };
 
-// Déverrouiller aussi au premier click n'importe où sur la page
-document.addEventListener('click', () => {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
+window.toggleAudio = function() {
+  audioUnlocked = !audioUnlocked;
   const banner = document.getElementById('audioUnlockBanner');
-  if (banner) {
-    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre!';
+  if (audioUnlocked) {
+    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre! (Cliquer pour désactiver)';
     banner.classList.add('active');
-    banner.onclick = null;
+    banner.onclick = () => toggleAudio();
+  } else {
+    // Arrêter la musique en cours
+    stopFranchiseMusic();
+    banner.textContent = '🔇 Musiques désactivées — Cliquer pour activer';
+    banner.classList.remove('active');
+    banner.onclick = () => toggleAudio();
   }
-});
+};
 
 function playFranchiseMusic(name) {
   if (!audioUnlocked) return;
