@@ -1934,14 +1934,28 @@ function playFranchiseMusic(name) {
   if (stopTimeout) { clearTimeout(stopTimeout); stopTimeout = null; }
 
   // Même franchise déjà en train de jouer — rien à faire
-  if (currentAudio && currentAudio._franchiseName === name && !currentAudio.paused) return;
+  // (vérifie aussi fadingOut pour le cas retour avant fin fade out)
+  if (currentAudio && currentAudio._franchiseName === name) {
+    // Annuler le fade out en cours et remonter le volume
+    if (fadeOutInterval) { clearInterval(fadeOutInterval); fadeOutInterval = null; }
+    const audio = currentAudio;
+    let vol = audio.volume;
+    const fadeIn = setInterval(() => {
+      if (currentAudio !== audio) { clearInterval(fadeIn); return; }
+      vol = Math.min(1, vol + 0.05);
+      audio.volume = vol;
+      if (vol >= 1) clearInterval(fadeIn);
+    }, 25);
+    return;
+  }
 
-  // Arrêter l'audio précédent immédiatement
+  // Arrêter l'audio précédent immédiatement (couper le fade out en cours)
   if (currentAudio) {
     if (fadeOutInterval) { clearInterval(fadeOutInterval); fadeOutInterval = null; }
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
+    const prev = currentAudio;
     currentAudio = null;
+    prev.pause();
+    prev.currentTime = 0;
   }
 
   const audio = new Audio(url);
@@ -1969,7 +1983,8 @@ function stopFranchiseMusic() {
     stopTimeout = null;
     if (!currentAudio) return;
     const audio = currentAudio;
-    currentAudio = null;
+    // Ne pas mettre currentAudio = null ici — on le fait seulement à la fin du fade out
+    // pour que playFranchiseMusic puisse détecter un retour sur la même franchise
     if (fadeOutInterval) { clearInterval(fadeOutInterval); fadeOutInterval = null; }
     // Fade out smooth
     fadeOutInterval = setInterval(() => {
@@ -1980,6 +1995,8 @@ function stopFranchiseMusic() {
         audio.currentTime = 0;
         clearInterval(fadeOutInterval);
         fadeOutInterval = null;
+        // Seulement maintenant on libère currentAudio
+        if (currentAudio === audio) currentAudio = null;
       }
     }, 30);
   }, 120);
