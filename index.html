@@ -2384,6 +2384,35 @@ window.advanceWinner = async function() {
     winner: tournamentWinner
   });
 
+  // Annoncer les résultats dans le chat Twitch
+  const roundNamesMsg = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
+  const roundNameMsg = roundNamesMsg[d.currentRound] || ('Round ' + (d.currentRound + 1));
+
+  const totalL = vLA + vLB || 1;
+  const leftTie = vLA === vLB;
+  const leftPct = Math.round((leftWinnerSide === 'A' ? vLA : vLB) / totalL * 100);
+  let msg = '🏆 [' + roundNameMsg + '] Résultats — ';
+  if (leftTie) {
+    msg += '🎲 ÉGALITÉ! ' + leftWinner + ' avance par tirage au sort (' + vLA + ' vs ' + vLB + ')';
+  } else {
+    msg += leftWinner + ' gagne avec ' + leftPct + '% des votes (' + vLA + ' vs ' + vLB + ')';
+  }
+
+  if (rightWinner) {
+    const vRA2 = d.votesRight?.A || 0;
+    const vRB2 = d.votesRight?.B || 0;
+    const totalR = vRA2 + vRB2 || 1;
+    const rightTie = vRA2 === vRB2;
+    const rightPct = Math.round((vRA2 > vRB2 ? vRA2 : vRB2) / totalR * 100);
+    if (rightTie) {
+      msg += ' ⚔ 🎲 ÉGALITÉ! ' + rightWinner + ' avance par tirage au sort (' + vRA2 + ' vs ' + vRB2 + ')';
+    } else {
+      msg += ' ⚔ ' + rightWinner + ' gagne avec ' + rightPct + '% des votes (' + vRA2 + ' vs ' + vRB2 + ')';
+    }
+  }
+
+  sendTwitchMessage(msg);
+
   showStatus(leftWinner + (rightWinner ? ' & ' + rightWinner : '') + ' avancent!', 'success');
 };
 
