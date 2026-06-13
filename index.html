@@ -36,8 +36,8 @@
     border-bottom: 1px solid var(--border);
     padding: 16px 24px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -884,32 +884,52 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-  /* AUDIO UNLOCK BUTTON */
-  #audioUnlockBtn {
-    background: var(--surface2);
-    border: 1px solid var(--accent);
+  /* AUDIO UNLOCK BANNER */
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  #audioUnlockBanner {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: rgba(0, 200, 255, 0.08);
+    border: 1px solid rgba(0, 200, 255, 0.3);
+    border-radius: 8px;
     color: var(--accent);
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
+    text-align: center;
     cursor: pointer;
     letter-spacing: 0.5px;
-    transition: all 0.2s;
-    white-space: nowrap;
+    animation: pulse 2s infinite;
+    transition: background 0.2s;
   }
-  #audioUnlockBtn:hover { background: rgba(0,200,255,0.1); }
-  #audioUnlockBtn.active { border-color: var(--win); color: var(--win); }
+  #audioUnlockBanner:hover { background: rgba(0, 200, 255, 0.15); }
+  #audioUnlockBanner.active {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--win);
+    cursor: default;
+    animation: none;
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">Icydragon <span>Bracket</span></div>
-  <div class="header-right">
-    <span class="live-badge" id="liveBadge" style="display:none">LIVE</span>
-    <button id="audioUnlockBtn" onclick="unlockAudio()">🔊 Cliquer pour entendre les musiques</button>
-    <button class="admin-btn" onclick="openAdminModal()">⚙ Admin</button>
+  <div class="header-top">
+    <div class="logo">Icydragon <span>Bracket</span></div>
+    <div class="header-right">
+      <span class="live-badge" id="liveBadge" style="display:none">LIVE</span>
+      <button class="admin-btn" onclick="openAdminModal()">⚙ Admin</button>
+    </div>
+  </div>
+  <div id="audioUnlockBanner" onclick="unlockAudio()">
+    🔊 Clique ici pour activer les musiques de franchise au survol
   </div>
 </header>
 
@@ -1874,12 +1894,11 @@ let audioUnlocked = false;
 // Exposer sur window pour le onclick inline (module scope ne pollue pas window)
 window.unlockAudio = function() {
   audioUnlocked = true;
-  const btn = document.getElementById('audioUnlockBtn');
-  if (btn) {
-    btn.textContent = '🔊 Son activé';
-    btn.classList.add('active');
-    btn.onclick = null;
-    btn.style.cursor = 'default';
+  const banner = document.getElementById('audioUnlockBanner');
+  if (banner) {
+    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre!';
+    banner.classList.add('active');
+    banner.onclick = null;
   }
 };
 
@@ -1887,12 +1906,11 @@ window.unlockAudio = function() {
 document.addEventListener('click', () => {
   if (audioUnlocked) return;
   audioUnlocked = true;
-  const btn = document.getElementById('audioUnlockBtn');
-  if (btn) {
-    btn.textContent = '🔊 Son activé';
-    btn.classList.add('active');
-    btn.onclick = null;
-    btn.style.cursor = 'default';
+  const banner = document.getElementById('audioUnlockBanner');
+  if (banner) {
+    banner.textContent = '🔊 Musiques activées — Survole une franchise pour l\'entendre!';
+    banner.classList.add('active');
+    banner.onclick = null;
   }
 });
 
@@ -1956,22 +1974,27 @@ function stopFranchiseMusic() {
 }
 
 function bindAudioHover() {
-  const pairs = [
-    ['contestantA', 'nameA'],
-    ['contestantB', 'nameB'],
-    ['contestantC', 'nameC'],
-    ['contestantD', 'nameD'],
-  ];
-  pairs.forEach(([elId, nameId]) => {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    if (el._audioListenersBound) return;
-    el._audioListenersBound = true;
-    el.addEventListener('mouseenter', () => {
-      const name = document.getElementById(nameId)?.textContent;
-      if (name && name !== '—' && name !== '?') playFranchiseMusic(name);
-    });
-    el.addEventListener('mouseleave', stopFranchiseMusic);
+  // Une seule fois sur le document — évite les faux mouseleave causés par les éléments enfants
+  if (document._audioHoverBound) return;
+  document._audioHoverBound = true;
+
+  document.addEventListener('mouseover', (e) => {
+    const contestant = e.target.closest('#contestantA, #contestantB, #contestantC, #contestantD');
+    if (!contestant) return;
+    const nameMap = { contestantA: 'nameA', contestantB: 'nameB', contestantC: 'nameC', contestantD: 'nameD' };
+    const nameId = nameMap[contestant.id];
+    if (!nameId) return;
+    const name = document.getElementById(nameId)?.textContent?.trim();
+    if (name && name !== '—' && name !== '?') playFranchiseMusic(name);
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    const from = e.target.closest('#contestantA, #contestantB, #contestantC, #contestantD');
+    if (!from) return;
+    // Vérifier que la souris quitte vraiment le contestant (pas juste un enfant)
+    const to = e.relatedTarget?.closest('#contestantA, #contestantB, #contestantC, #contestantD');
+    if (to === from) return; // toujours dans le même contestant
+    stopFranchiseMusic();
   });
 }
 
