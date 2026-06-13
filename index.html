@@ -1962,7 +1962,10 @@ function playFranchiseMusic(name) {
   audio._franchiseName = name;
   audio.volume = 0;
   audio.loop = true;
-  audio.play().catch((e) => { console.warn('[Audio] play() bloqué:', e); });
+  audio.play().catch((e) => {
+    // AbortError = pause() appelé avant que play() ait eu le temps de démarrer (mouvement rapide) — normal, on ignore
+    if (e.name !== 'AbortError') console.warn('[Audio] play() bloqué:', e);
+  });
   currentAudio = audio;
 
   // Fade in
