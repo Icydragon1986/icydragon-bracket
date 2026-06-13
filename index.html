@@ -883,9 +883,35 @@
   ::-webkit-scrollbar-track { background: var(--surface); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* AUDIO UNLOCK BUTTON */
+  #audioUnlockBtn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 300;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 1px;
+    animation: pulse 2s infinite;
+    transition: background 0.2s;
+  }
+  #audioUnlockBtn:hover { background: rgba(0,200,255,0.1); }
 </style>
 </head>
 <body>
+
+<!-- AUDIO UNLOCK BUTTON -->
+<button id="audioUnlockBtn" onclick="unlockAudio()">🔊 Activer le son</button>
 
 <header>
   <div class="logo">Icydragon <span>Bracket</span></div>
@@ -1851,8 +1877,25 @@ const FRANCHISE_MUSIC = {
 
 let currentAudio = null;
 let fadeOutInterval = null;
+let audioUnlocked = false;
+
+// Exposer sur window pour le onclick inline (module scope ne pollue pas window)
+window.unlockAudio = function() {
+  audioUnlocked = true;
+  const btn = document.getElementById('audioUnlockBtn');
+  if (btn) btn.style.display = 'none';
+};
+
+// Déverrouiller aussi au premier click n'importe où sur la page
+document.addEventListener('click', () => {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const btn = document.getElementById('audioUnlockBtn');
+  if (btn) btn.style.display = 'none';
+});
 
 function playFranchiseMusic(name) {
+  if (!audioUnlocked) return;
   const url = FRANCHISE_MUSIC[name];
   if (!url) return;
 
@@ -1879,7 +1922,7 @@ function playFranchiseMusic(name) {
   audio._franchiseName = name;
   audio.volume = 0;
   audio.loop = true;
-  audio.play().catch(() => {});
+  audio.play().catch((e) => { console.warn('[Audio] play() bloqué:', e); });
   currentAudio = audio;
 
   // Fade in
@@ -1920,7 +1963,6 @@ function bindAudioHover() {
   pairs.forEach(([elId, nameId]) => {
     const el = document.getElementById(elId);
     if (!el) return;
-    // Utiliser un flag pour éviter les doublons sans cloner le nœud
     if (el._audioListenersBound) return;
     el._audioListenersBound = true;
     el.addEventListener('mouseenter', () => {
