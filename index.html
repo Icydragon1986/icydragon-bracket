@@ -1889,6 +1889,7 @@ const FRANCHISE_MUSIC = {
 
 let currentAudio = null;
 let fadeOutInterval = null;
+let stopTimeout = null;
 let audioUnlocked = false;
 
 // Exposer sur window pour le onclick inline (module scope ne pollue pas window)
@@ -1919,23 +1920,18 @@ function playFranchiseMusic(name) {
   const url = FRANCHISE_MUSIC[name];
   if (!url) return;
 
+  // Annuler tout stop en attente
+  if (stopTimeout) { clearTimeout(stopTimeout); stopTimeout = null; }
+
   // Même franchise déjà en train de jouer — rien à faire
   if (currentAudio && currentAudio._franchiseName === name && !currentAudio.paused) return;
 
-  // Fade out l'audio précédent
+  // Arrêter l'audio précédent immédiatement
   if (currentAudio) {
-    const prev = currentAudio;
-    if (fadeOutInterval) clearInterval(fadeOutInterval);
-    fadeOutInterval = setInterval(() => {
-      if (prev.volume > 0.05) {
-        prev.volume = Math.max(0, prev.volume - 0.05);
-      } else {
-        prev.pause();
-        prev.currentTime = 0;
-        clearInterval(fadeOutInterval);
-        fadeOutInterval = null;
-      }
-    }, 30);
+    if (fadeOutInterval) { clearInterval(fadeOutInterval); fadeOutInterval = null; }
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
   }
 
   const audio = new Audio(url);
@@ -1948,29 +1944,35 @@ function playFranchiseMusic(name) {
   // Fade in
   let vol = 0;
   const fadeIn = setInterval(() => {
-    vol = Math.min(1, vol + 0.04);
-    if (currentAudio === audio) {
-      audio.volume = vol;
-    }
-    if (vol >= 1 || currentAudio !== audio) clearInterval(fadeIn);
-  }, 30);
+    if (currentAudio !== audio) { clearInterval(fadeIn); return; }
+    vol = Math.min(1, vol + 0.05);
+    audio.volume = vol;
+    if (vol >= 1) clearInterval(fadeIn);
+  }, 25);
 }
 
 function stopFranchiseMusic() {
   if (!currentAudio) return;
-  const audio = currentAudio;
-  currentAudio = null;
-  if (fadeOutInterval) clearInterval(fadeOutInterval);
-  fadeOutInterval = setInterval(() => {
-    if (audio.volume > 0.05) {
-      audio.volume = Math.max(0, audio.volume - 0.05);
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
-      clearInterval(fadeOutInterval);
-      fadeOutInterval = null;
-    }
-  }, 30);
+  // Petit délai pour absorber les micro-sorties accidentelles entre éléments enfants
+  if (stopTimeout) clearTimeout(stopTimeout);
+  stopTimeout = setTimeout(() => {
+    stopTimeout = null;
+    if (!currentAudio) return;
+    const audio = currentAudio;
+    currentAudio = null;
+    if (fadeOutInterval) { clearInterval(fadeOutInterval); fadeOutInterval = null; }
+    // Fade out smooth
+    fadeOutInterval = setInterval(() => {
+      if (audio.volume > 0.04) {
+        audio.volume = Math.max(0, audio.volume - 0.04);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        clearInterval(fadeOutInterval);
+        fadeOutInterval = null;
+      }
+    }, 30);
+  }, 120);
 }
 
 function bindAudioHover() {
