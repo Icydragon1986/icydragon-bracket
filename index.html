@@ -1297,6 +1297,9 @@ function renderCurrentMatchup() {
     document.getElementById('matchupFooterRight').innerHTML = '<div class="vote-closed-msg">Pas de match miroir</div>';
     document.getElementById('voteStatusRight').innerHTML = '';
   }
+
+  // Bind audio hover après chaque render du matchup
+  bindAudioHover();
 }
 
 function renderBracket() {
@@ -1316,17 +1319,11 @@ function renderBracket() {
   const GAP = 36;       // horizontal gap between columns (for connector lines)
   const ROUND_W = MATCH_W + GAP;
 
-  // bracket[0] has all R32 matches (16 for 32 teams)
-  // Left side = first half of each round's matches
-  // Right side = second half, mirrored (displayed outermost to innermost)
-  // Center = Finale
+  const numRounds = bracket.length;
+  const sideRounds = numRounds - 1;
 
-  const numRounds = bracket.length; // 5 for 32 teams (R32,R16,Q,S,F)
-  const sideRounds = numRounds - 1; // 4 rounds per side (not counting finale)
-
-  // Split each round into left and right halves
-  const left = [];   // left[rIdx] = first half of bracket[rIdx]
-  const right = [];  // right[rIdx] = second half reversed (for mirror effect)
+  const left = [];
+  const right = [];
   for (let r = 0; r < numRounds; r++) {
     const matches = bracket[r];
     const half = Math.ceil(matches.length / 2);
@@ -1334,15 +1331,10 @@ function renderBracket() {
     right.push(matches.slice(half).reverse());
   }
 
-  // Height: driven by number of left-side R32 matches
-  const leftR0count = left[0].length; // 8 for 32 teams
+  const leftR0count = left[0].length;
   const SLOT_H = MATCH_H * 2.4;
   const TOTAL_H = leftR0count * SLOT_H;
 
-  // X positions:
-  // Left side: col 0 = outermost (R32), col sideRounds-1 = innermost (Semis)
-  // Finale: col sideRounds
-  // Right side: col sideRounds+1 = innermost (Semis), col sideRounds+sideRounds = outermost (R32)
   const finaleCol = sideRounds;
   const totalCols = sideRounds + 1 + sideRounds;
   const totalW = totalCols * ROUND_W + MATCH_W;
@@ -1395,13 +1387,11 @@ function renderBracket() {
     wrapper.appendChild(lbl);
   }
 
-  // Round name helpers
   const roundNames = ['Round of 32','Round of 16','Quarts','Demies','Finale'];
   function leftLabel(rIdx) { return roundNames[rIdx] || ('Round '+(rIdx+1)); }
   function rightLabel(rIdx) { return roundNames[rIdx] || ('Round '+(rIdx+1)); }
 
   // ---- RENDER LEFT SIDE ----
-  // Column mapping: rIdx 0 = col 0, rIdx 1 = col 1, ... rIdx sideRounds-1 = col sideRounds-1
   for (let rIdx = 0; rIdx < sideRounds; rIdx++) {
     const matches = left[rIdx];
     const numM = matches.length;
@@ -1410,11 +1400,10 @@ function renderBracket() {
     addLabel(leftLabel(rIdx), col);
 
     matches.forEach((match, mIdx) => {
-      const origIdx = mIdx; // left half: original index = mIdx
+      const origIdx = mIdx;
       const y = mIdx * slotH + (slotH - MATCH_H) / 2;
       const pos = makeCard(match, col, y, rIdx, origIdx);
 
-      // Draw connector to next round inward (col+1)
       if (rIdx < sideRounds - 1) {
         const nextMatches = left[rIdx + 1];
         const nextSlotH = TOTAL_H / nextMatches.length;
@@ -1450,9 +1439,9 @@ function renderBracket() {
 
   // ---- RIGHT SEMI -> FINALE connector ----
   {
-    const semiMatches = right[sideRounds - 1]; // innermost right = index sideRounds-1
+    const semiMatches = right[sideRounds - 1];
     const semiSlotH = TOTAL_H / semiMatches.length;
-    const semiCol = finaleCol + 1; // first right col
+    const semiCol = finaleCol + 1;
     const finY = TOTAL_H / 2 - MATCH_H / 2;
     semiMatches.forEach((match, mIdx) => {
       const sy = mIdx * semiSlotH + (semiSlotH - MATCH_H) / 2;
@@ -1462,33 +1451,21 @@ function renderBracket() {
   }
 
   // ---- RENDER RIGHT SIDE ----
-  // Right side: innermost round at col finaleCol+1, outermost at col finaleCol+sideRounds
-  // right[rIdx]: rIdx=sideRounds-1 is innermost, rIdx=0 is outermost
-  // So col = finaleCol + 1 + (sideRounds - 1 - rIdx)
   for (let rIdx = sideRounds - 1; rIdx >= 0; rIdx--) {
     const matches = right[rIdx];
     const numM = matches.length;
     const slotH = TOTAL_H / numM;
-    const colFromCenter = sideRounds - 1 - rIdx; // 0=innermost
+    const colFromCenter = sideRounds - 1 - rIdx;
     const col = finaleCol + 1 + colFromCenter;
-
-    // original indices in bracket: second half, reversed
-    // right[rIdx] = bracket[rIdx].slice(half).reverse()
-    // so right[rIdx][mIdx] has origIdx = half + (numM - 1 - mIdx)
     const half = Math.ceil(bracket[rIdx].length / 2);
 
-    if (colFromCenter === 0) {
-      addLabel(rightLabel(rIdx), col);
-    } else {
-      addLabel(rightLabel(rIdx), col);
-    }
+    addLabel(rightLabel(rIdx), col);
 
     matches.forEach((match, mIdx) => {
       const origIdx = half + (numM - 1 - mIdx);
       const y = mIdx * slotH + (slotH - MATCH_H) / 2;
       const pos = makeCard(match, col, y, rIdx, origIdx);
 
-      // Draw connector inward (toward center = col-1)
       if (colFromCenter > 0) {
         const innerRIdx = rIdx + 1;
         const innerMatches = right[innerRIdx];
@@ -1497,7 +1474,6 @@ function renderBracket() {
         const innerY = innerMIdx * innerSlotH + (innerSlotH - MATCH_H) / 2;
         const innerCol = col - 1;
         const connY2 = (mIdx % 2 === 0) ? innerY + 13 : innerY + MATCH_H - 13;
-        // Connector goes left (from outer x to inner x+MATCH_W)
         drawLine(col * ROUND_W, y + MATCH_H/2, innerCol * ROUND_W + MATCH_W, connY2, pos.isActive);
       }
     });
@@ -1505,7 +1481,6 @@ function renderBracket() {
 
   const outer = document.createElement('div');
   outer.style.cssText = 'overflow-x:auto;padding-bottom:16px;padding-top:8px;';
-  // Align bracket center with content-centered div center
   requestAnimationFrame(() => {
     const centered = document.querySelector('.content-centered');
     if (centered) {
@@ -1531,7 +1506,7 @@ function renderAdminFranchises() {
 }
 
 // ========== BYE ==========
-let byeSide = null; // 'left' or 'right'
+let byeSide = null;
 
 window.declareBye = function(side) {
   const d = tournamentData;
@@ -1575,27 +1550,22 @@ window.confirmBye = async function(winnerSide) {
   const match = round[matchIdx];
   const winner = winnerSide === 'A' ? match.a : match.b;
 
-  // Mark as won with 0 votes (bye)
   match.winner = winnerSide;
   match.votesA = winnerSide === 'A' ? 1 : 0;
   match.votesB = winnerSide === 'B' ? 1 : 0;
 
-  // Place winner in next round
   if (d.currentRound + 1 < bracket.length) {
     const nIdx = Math.floor(matchIdx / 2);
     if (matchIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = winner;
     else bracket[d.currentRound + 1][nIdx].b = winner;
   }
 
-  // If both sides are now done, advance match index
   const otherIdx = byeSide === 'left' ? rightIdx : leftIdx;
   const otherMatch = round[otherIdx];
-  const bothDone = match.winner && (otherMatch?.winner || otherIdx < half === false);
 
   let nextMatchIndex = d.currentMatchIndex;
   let nextRound = d.currentRound;
 
-  // Only advance if the OTHER side match is also completed
   if (otherMatch && otherMatch.winner) {
     nextMatchIndex = leftIdx + 1;
     if (nextMatchIndex >= half) { nextRound++; nextMatchIndex = 0; }
@@ -1619,8 +1589,8 @@ window.closeByeModal = function() {
 };
 
 // ========== SEED MANUEL ==========
-let selectedFranchise = null;  // currently selected chip
-let seedPositions = {};        // slot index -> franchise name
+let selectedFranchise = null;
+let seedPositions = {};
 
 window.toggleSeedPanel = function() {
   const panel = document.getElementById('seedPanel');
@@ -1633,7 +1603,6 @@ function renderSeedPanel() {
   const size = (() => { let s=1; while(s<franchises.length) s*=2; return s; })();
   const half = size / 2;
 
-  // Franchise chips
   const chipList = document.getElementById('seedFranchiseList');
   chipList.innerHTML = '';
   franchises.forEach(f => {
@@ -1646,11 +1615,9 @@ function renderSeedPanel() {
     chipList.appendChild(chip);
   });
 
-  // Slots — show as match pairs (Position 1 vs 2, 3 vs 4, etc.)
   const slotsEl = document.getElementById('seedSlots');
   slotsEl.innerHTML = '';
 
-  // Left side header
   const leftHeader = document.createElement('div');
   leftHeader.style.cssText = 'grid-column:1/-1;font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);padding:4px 0 2px;';
   leftHeader.textContent = '⬅ Côté gauche (positions 1-' + half + ')';
@@ -1677,7 +1644,6 @@ function renderSeedPanel() {
     slotsEl.appendChild(slot);
   }
 
-  // Right side header
   const rightHeader = document.createElement('div');
   rightHeader.style.cssText = 'grid-column:1/-1;font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);padding:8px 0 2px;';
   rightHeader.textContent = 'Côté droit ➡ (positions ' + (half+1) + '-' + size + ')';
@@ -1714,7 +1680,6 @@ window.selectSeedFranchise = function(el, name) {
 
 window.assignSeedSlot = function(index) {
   if (!selectedFranchise) return;
-  // Remove from previous slot if already placed
   for (const [k, v] of Object.entries(seedPositions)) {
     if (v === selectedFranchise) delete seedPositions[k];
   }
@@ -1738,11 +1703,9 @@ window.generateBracketSeeded = async function() {
   const franchises = [...(tournamentData?.franchises || [])];
   if (franchises.length < 2) { showStatus('Pas assez de franchises!', 'error'); return; }
 
-  // Pad to power of 2
   let size = 1;
   while (size < franchises.length) size *= 2;
 
-  // Start with seeded positions
   const slots = new Array(size).fill(null);
   const placed = new Set();
 
@@ -1754,7 +1717,6 @@ window.generateBracketSeeded = async function() {
     }
   }
 
-  // Shuffle remaining franchises into empty slots
   const remaining = franchises.filter(f => !placed.has(f));
   for (let i = remaining.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1766,14 +1728,11 @@ window.generateBracketSeeded = async function() {
     if (!slots[i]) slots[i] = remaining[ri++] || null;
   }
 
-  // Build bracket from slots (first half = left, second half = right)
   const half = size / 2;
   const round0 = [];
-  // Left side: slots 0..half-1, paired (0,1),(2,3)...
   for (let i = 0; i < half; i += 2) {
     round0.push({ a: slots[i], b: slots[i+1]||null, winner: null, votesA: 0, votesB: 0 });
   }
-  // Right side: slots half..size-1, paired (half,half+1)...
   for (let i = half; i < size; i += 2) {
     round0.push({ a: slots[i], b: slots[i+1]||null, winner: null, votesA: 0, votesB: 0 });
   }
@@ -1854,6 +1813,124 @@ function setLogo(id, name) {
   }
 }
 
+// ========== MUSIC ==========
+const FRANCHISE_MUSIC = {
+  "Adibou": "https://icydragon1986.github.io/icydragon-bracket/music/Adibou.mp3",
+  "Assassin's Creed": "https://icydragon1986.github.io/icydragon-bracket/music/Assassin%27s%20Creed.mp3",
+  "Batman": "https://icydragon1986.github.io/icydragon-bracket/music/Batman.mp3",
+  "Bomberman": "https://icydragon1986.github.io/icydragon-bracket/music/Bomberman.mp3",
+  "Castlevania": "https://icydragon1986.github.io/icydragon-bracket/music/Castlevania.mp3",
+  "Dark Souls": "https://icydragon1986.github.io/icydragon-bracket/music/Dark%20Souls.mp3",
+  "Disney Mickey Mouse": "https://icydragon1986.github.io/icydragon-bracket/music/Mickey%20Mouse.mp3",
+  "Donkey Kong": "https://icydragon1986.github.io/icydragon-bracket/music/Donkey%20Kong.mp3",
+  "Duke Nukem": "https://icydragon1986.github.io/icydragon-bracket/music/Duke%20Nukem.mp3",
+  "Final Fantasy": "https://icydragon1986.github.io/icydragon-bracket/music/FINAL%20FANTASY.mp3",
+  "Fire Emblem": "https://icydragon1986.github.io/icydragon-bracket/music/Fire%20Emblem.mp3",
+  "Freddi Fish": "https://icydragon1986.github.io/icydragon-bracket/music/Freddi%20Fish.mp3",
+  "Garfield": "https://icydragon1986.github.io/icydragon-bracket/music/Garfield.mp3",
+  "God of War": "https://icydragon1986.github.io/icydragon-bracket/music/God%20of%20War.mp3",
+  "Half Life": "https://icydragon1986.github.io/icydragon-bracket/music/Half-Life.mp3",
+  "Hamtaro": "https://icydragon1986.github.io/icydragon-bracket/music/Hamtaro.mp3",
+  "Kirby": "https://icydragon1986.github.io/icydragon-bracket/music/Kirby.mp3",
+  "Mario Bros.": "https://icydragon1986.github.io/icydragon-bracket/music/Super%20Mario%20Bros.mp3",
+  "MegaMan": "https://icydragon1986.github.io/icydragon-bracket/music/Mega%20Man.mp3",
+  "Metroid": "https://icydragon1986.github.io/icydragon-bracket/music/Metroid.mp3",
+  "Phoenix Wright": "https://icydragon1986.github.io/icydragon-bracket/music/Phoenix%20Wright.mp3",
+  "Pikmin": "https://icydragon1986.github.io/icydragon-bracket/music/Pikmin.mp3",
+  "Pokemon": "https://icydragon1986.github.io/icydragon-bracket/music/Pokemon.mp3",
+  "Secret of Mana": "https://icydragon1986.github.io/icydragon-bracket/music/Secret%20of%20Mana.mp3",
+  "Silent Hill": "https://icydragon1986.github.io/icydragon-bracket/music/Silent%20Hill.mp3",
+  "Sly Cooper": "https://icydragon1986.github.io/icydragon-bracket/music/Sly%20Cooper.mp3",
+  "Sonic": "https://icydragon1986.github.io/icydragon-bracket/music/Sonic.mp3",
+  "Teenage Mutant Ninja Turtles": "https://icydragon1986.github.io/icydragon-bracket/music/TMNT.mp3",
+  "Tomb Raider": "https://icydragon1986.github.io/icydragon-bracket/music/Tomb%20Raider.mp3",
+  "The Elder Scrolls": "https://icydragon1986.github.io/icydragon-bracket/music/Elder%20Scrolls.mp3",
+  "Uncharted": "https://icydragon1986.github.io/icydragon-bracket/music/Uncharted.mp3",
+  "Wario": "https://icydragon1986.github.io/icydragon-bracket/music/Wario.mp3",
+};
+
+let currentAudio = null;
+let fadeOutInterval = null;
+
+function playFranchiseMusic(name) {
+  const url = FRANCHISE_MUSIC[name];
+  if (!url) return;
+
+  // Même franchise déjà en train de jouer — rien à faire
+  if (currentAudio && currentAudio._franchiseName === name && !currentAudio.paused) return;
+
+  // Fade out l'audio précédent
+  if (currentAudio) {
+    const prev = currentAudio;
+    if (fadeOutInterval) clearInterval(fadeOutInterval);
+    fadeOutInterval = setInterval(() => {
+      if (prev.volume > 0.05) {
+        prev.volume = Math.max(0, prev.volume - 0.05);
+      } else {
+        prev.pause();
+        prev.currentTime = 0;
+        clearInterval(fadeOutInterval);
+        fadeOutInterval = null;
+      }
+    }, 30);
+  }
+
+  const audio = new Audio(url);
+  audio._franchiseName = name;
+  audio.volume = 0;
+  audio.loop = true;
+  audio.play().catch(() => {});
+  currentAudio = audio;
+
+  // Fade in
+  let vol = 0;
+  const fadeIn = setInterval(() => {
+    vol = Math.min(1, vol + 0.04);
+    if (currentAudio === audio) {
+      audio.volume = vol;
+    }
+    if (vol >= 1 || currentAudio !== audio) clearInterval(fadeIn);
+  }, 30);
+}
+
+function stopFranchiseMusic() {
+  if (!currentAudio) return;
+  const audio = currentAudio;
+  currentAudio = null;
+  if (fadeOutInterval) clearInterval(fadeOutInterval);
+  fadeOutInterval = setInterval(() => {
+    if (audio.volume > 0.05) {
+      audio.volume = Math.max(0, audio.volume - 0.05);
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+      clearInterval(fadeOutInterval);
+      fadeOutInterval = null;
+    }
+  }, 30);
+}
+
+function bindAudioHover() {
+  const pairs = [
+    ['contestantA', 'nameA'],
+    ['contestantB', 'nameB'],
+    ['contestantC', 'nameC'],
+    ['contestantD', 'nameD'],
+  ];
+  pairs.forEach(([elId, nameId]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    // Utiliser un flag pour éviter les doublons sans cloner le nœud
+    if (el._audioListenersBound) return;
+    el._audioListenersBound = true;
+    el.addEventListener('mouseenter', () => {
+      const name = document.getElementById(nameId)?.textContent;
+      if (name && name !== '—' && name !== '?') playFranchiseMusic(name);
+    });
+    el.addEventListener('mouseleave', stopFranchiseMusic);
+  });
+}
+
 // ========== STREAMER.BOT WEBSOCKET ==========
 const SB_ACTION_ID = 'b70ccb10-b461-448d-b3e6-c601d58bd078';
 let sbSocket = null;
@@ -1866,14 +1943,12 @@ function connectStreamerBot() {
     sbSocket.onopen = () => {
       sbConnected = true;
       console.log('[Streamer.bot] Connecté!');
-      // Send any queued messages
       sbQueue.forEach(msg => sendSBAction(msg));
       sbQueue = [];
     };
     sbSocket.onclose = () => { sbConnected = false; sbSocket = null; };
     sbSocket.onerror = () => { sbConnected = false; sbSocket = null; };
     sbSocket.onmessage = (e) => {
-      // Handle hello/auth if needed
       try {
         const data = JSON.parse(e.data);
         console.log('[Streamer.bot]', data);
@@ -1926,7 +2001,6 @@ function startTimer(endsAt) {
       timerText.textContent = '0:00';
       circle.setAttribute('stroke-dashoffset', circumference);
       timerDisplay.style.display = 'none';
-      // Auto close voting
       if (tournamentData?.votingOpen) {
         await updateDoc(tournamentRef, { votingOpen: false });
       }
@@ -1973,7 +2047,6 @@ function updateNextMatch() {
   const banner = document.getElementById('nextMatchDisplay');
 
   if (nextLeftIdx >= half) {
-    // Next round
     const nextRound = bracket[d.currentRound + 1];
     if (!nextRound) { banner.style.display = 'none'; return; }
     const nL = nextRound[0];
@@ -2017,8 +2090,6 @@ window.castVote = async function(matchSide, voteSide) {
 };
 
 // ========== ADMIN ACTIONS ==========
-// Firestore ne supporte pas les tableaux imbriqués
-// On aplatit le bracket: clé "r{round}_m{match}" -> objet match
 function bracketToFlat(bracket) {
   const flat = {};
   bracket.forEach((round, rIdx) => {
@@ -2049,38 +2120,31 @@ window.generateBracket = async function() {
   const franchises = [...(tournamentData?.franchises || [])];
   if (franchises.length < 2) { showStatus('Pas assez de franchises!', 'error'); return; }
 
-  // Shuffle franchises
   for (let i = franchises.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [franchises[i], franchises[j]] = [franchises[j], franchises[i]];
   }
 
-  // Pad to power of 2
   let size = 1;
   while (size < franchises.length) size *= 2;
   while (franchises.length < size) franchises.push(null);
 
-  // Split into LEFT and RIGHT halves
   const half = size / 2;
-  const leftTeams = franchises.slice(0, half);   // 16 teams left side
-  const rightTeams = franchises.slice(half);       // 16 teams right side
+  const leftTeams = franchises.slice(0, half);
+  const rightTeams = franchises.slice(half);
 
-  // Build left R32 matches (8 matches from 16 left teams)
   const leftR32 = [];
   for (let i = 0; i < leftTeams.length; i += 2) {
     leftR32.push({ a: leftTeams[i], b: leftTeams[i+1]||null, winner: null, votesA: 0, votesB: 0 });
   }
 
-  // Build right R32 matches (8 matches from 16 right teams)
   const rightR32 = [];
   for (let i = 0; i < rightTeams.length; i += 2) {
     rightR32.push({ a: rightTeams[i], b: rightTeams[i+1]||null, winner: null, votesA: 0, votesB: 0 });
   }
 
-  // Round 0 = all R32 matches: left half first, then right half
-  const round0 = [...leftR32, ...rightR32]; // 16 matches total
+  const round0 = [...leftR32, ...rightR32];
 
-  // Build subsequent rounds as empty placeholders
   const bracket = [round0];
   let prevSize = round0.length;
   while (prevSize > 1) {
@@ -2124,7 +2188,6 @@ window.openVoting = async function() {
   });
   showStatus('Vote ouvert! Timer: ' + minutes + ' min', 'success');
 
-  // Announce on Twitch via Streamer.bot
   const d = tournamentData;
   const bracket = flatToBracket(d);
   if (bracket.length > 0) {
@@ -2161,7 +2224,6 @@ window.advanceWinner = async function() {
   const leftIdx  = d.currentMatchIndex;
   const rightIdx = round.length - 1 - leftIdx;
 
-  // Advance LEFT match
   const leftMatch = round[leftIdx];
   const vLA = d.votesLeft?.A || 0, vLB = d.votesLeft?.B || 0;
   const leftWinnerSide = vLA === vLB ? (Math.random() < 0.5 ? 'A' : 'B') : (vLA > vLB ? 'A' : 'B');
@@ -2175,7 +2237,6 @@ window.advanceWinner = async function() {
     else bracket[d.currentRound + 1][nIdx].b = leftWinner;
   }
 
-  // Advance RIGHT match (mirror)
   let rightWinner = null;
   if (rightIdx >= half && rightIdx !== leftIdx && round[rightIdx]) {
     const rightMatch = round[rightIdx];
@@ -2187,8 +2248,6 @@ window.advanceWinner = async function() {
 
     if (d.currentRound + 1 < bracket.length) {
       const nIdx = Math.floor(rightIdx / 2);
-      // Right side: inverted slot assignment to match visual display
-      // Exception: semi->finale, right winner goes to .b
       const isLastBeforeFinale = d.currentRound === bracket.length - 2;
       if (isLastBeforeFinale) {
         bracket[d.currentRound + 1][nIdx].b = rightWinner;
@@ -2200,14 +2259,11 @@ window.advanceWinner = async function() {
     }
   }
 
-  // Advance index by 1 (skip the mirror match since we handled both)
   let nextMatchIndex = leftIdx + 1;
   let nextRound = d.currentRound;
-  // Skip right half indices
   if (nextMatchIndex >= half) { nextRound++; nextMatchIndex = 0; }
 
   let tournamentWinner = null;
-  // Finale = last round, only 1 match (index 0)
   if (d.currentRound === bracket.length - 1) {
     tournamentWinner = leftWinner;
   }
