@@ -239,6 +239,60 @@
     transition: width 0.5s ease;
   }
 
+  /* WINNER BAR */
+  .winner-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(10,14,26,0.98) 0%, rgba(10,14,26,0.85) 100%);
+    border-top: 2px solid var(--gold);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    animation: winnerGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes winnerGlow {
+    0%, 100% { box-shadow: 0 -4px 24px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 -4px 32px rgba(245, 158, 11, 0.5); }
+  }
+
+  .winner-trophy {
+    font-size: 2.4rem;
+  }
+
+  .winner-logo-obs {
+    height: 56px;
+    width: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 6px rgba(0,0,0,0.8));
+  }
+
+  .winner-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .winner-label-obs {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .winner-name-obs {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
   /* LOADING */
   .loading {
     display: flex;
@@ -321,6 +375,16 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Winner bar -->
+  <div class="winner-bar" id="winnerBar" style="display:none">
+    <div class="winner-trophy">🏆</div>
+    <img id="winnerLogoObs" class="winner-logo-obs" src="" alt="" onerror="this.style.display='none'">
+    <div class="winner-text">
+      <div class="winner-label-obs">Gagnant du tournoi</div>
+      <div class="winner-name-obs" id="winnerNameObs">—</div>
+    </div>
   </div>
 
 </div>
@@ -418,6 +482,27 @@ function render() {
   const bracket = getBracket();
   const roundNames = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
 
+  const bar = document.getElementById('currentBar');
+  const winnerBar = document.getElementById('winnerBar');
+
+  // ---- TOURNOI TERMINÉ : afficher le gagnant ----
+  if (d.winner) {
+    document.getElementById('obsRoundTitle').textContent = '🏆 Tournoi Terminé';
+    document.getElementById('obsDot').style.background = 'var(--gold)';
+    document.getElementById('obsStatusText').textContent = 'GAGNANT!';
+
+    document.getElementById('winnerNameObs').textContent = d.winner;
+    setObsLogo('winnerLogoObs', d.winner);
+
+    winnerBar.style.display = 'flex';
+    bar.style.display = 'none';
+
+    renderBracket();
+    return;
+  }
+
+  winnerBar.style.display = 'none';
+
   // Header
   document.getElementById('obsRoundTitle').textContent =
     roundNames[d.currentRound] || 'Tournoi des Franchises';
@@ -425,7 +510,6 @@ function render() {
   document.getElementById('obsStatusText').textContent = d.votingOpen ? 'VOTE OUVERT' : 'En attente';
 
   // Bottom bar
-  const bar = document.getElementById('currentBar');
   if (bracket.length > 0 && d.votingOpen) {
     bar.style.display = 'flex';
     const round = bracket[d.currentRound] || [];
