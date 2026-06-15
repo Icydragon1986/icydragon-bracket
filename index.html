@@ -1162,7 +1162,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc, serverTimestamp, collection, getDocs, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import FingerprintJS from "https://openfpcdn.io/fingerprintjs/v4/esm.min.js";
 
 // ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
@@ -1193,11 +1192,14 @@ let lastCheckedMatchIdRight = null;
 async function initFingerprint() {
   if (myFingerprint) return myFingerprint;
   try {
+    // Import dynamique : si bloqué par un bloqueur de pub/extension, ne casse pas le reste du site
+    const mod = await import("https://openfpcdn.io/fingerprintjs/v4/esm.min.js");
+    const FingerprintJS = mod.default;
     const fp = await FingerprintJS.load();
     const result = await fp.get();
     myFingerprint = result.visitorId;
   } catch (e) {
-    // Fallback si FingerprintJS échoue (bloqueur de pub, etc.)
+    // Fallback si FingerprintJS échoue (bloqueur de pub, CORS, etc.)
     myFingerprint = localStorage.getItem('icydragon_fp_fallback');
     if (!myFingerprint) {
       myFingerprint = 'fb_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
