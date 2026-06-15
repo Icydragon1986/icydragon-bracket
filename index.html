@@ -1447,8 +1447,10 @@ async function initializeTournament() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votesLeft: { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft: '',
     matchIdRight: '',
     winner: null,
@@ -1615,7 +1617,7 @@ function renderCurrentMatchup() {
     document.getElementById('nameB').textContent = leftMatch.b || '—';
     setLogo('logoA', leftMatch.a);
     setLogo('logoB', leftMatch.b);
-    const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
+    const vA = d.votesLeftA || 0, vB = d.votesLeftB || 0;
     const tot = vA + vB || 1;
     document.getElementById('votesA').textContent = vA;
     document.getElementById('votesB').textContent = vB;
@@ -1640,7 +1642,7 @@ function renderCurrentMatchup() {
     document.getElementById('nameD').textContent = rightMatch.b || '—';
     setLogo('logoC', rightMatch.a);
     setLogo('logoD', rightMatch.b);
-    const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
+    const vC = d.votesRightA || 0, vD = d.votesRightB || 0;
     const totR = vC + vD || 1;
     document.getElementById('votesC').textContent = vC;
     document.getElementById('votesD').textContent = vD;
@@ -2116,8 +2118,10 @@ window.generateBracketSeeded = async function() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votesLeft:  { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft:  Date.now().toString() + '_L',
     matchIdRight: Date.now().toString() + '_R',
     winner: null,
@@ -2496,7 +2500,7 @@ window.castVote = async function(matchSide, voteSide) {
   await initFingerprint();
 
   const matchId = matchSide === 'left' ? d.matchIdLeft : d.matchIdRight;
-  const voteField = matchSide === 'left' ? 'votesLeft' : 'votesRight';
+  const fieldPrefix = matchSide === 'left' ? 'votesLeft' : 'votesRight';
   const existingSide = myVoteCache[matchId] || null;
 
   // Même choix qu'avant — rien à faire
@@ -2508,11 +2512,11 @@ window.castVote = async function(matchSide, voteSide) {
   const updates = {};
   if (existingSide) {
     // Changement de vote : retirer l'ancien, ajouter le nouveau
-    updates[voteField + '.' + existingSide] = increment(-1);
-    updates[voteField + '.' + voteSide] = increment(1);
+    updates[fieldPrefix + existingSide] = increment(-1);
+    updates[fieldPrefix + voteSide] = increment(1);
   } else {
     // Premier vote sur ce match
-    updates[voteField + '.' + voteSide] = increment(1);
+    updates[fieldPrefix + voteSide] = increment(1);
   }
 
   await updateDoc(tournamentRef, updates);
@@ -2598,8 +2602,10 @@ window.generateBracket = async function() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votesLeft: { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft: Date.now().toString() + '_L',
     matchIdRight: Date.now().toString() + '_R',
     winner: null,
@@ -2617,8 +2623,10 @@ window.openVoting = async function() {
   const endsAt = Date.now() + minutes * 60 * 1000;
   await updateDoc(tournamentRef, {
     votingOpen: true,
-    votesLeft:  { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft:  now + '_L',
     matchIdRight: now + '_R',
     timerEndsAt: endsAt,
@@ -2663,7 +2671,7 @@ window.advanceWinner = async function() {
   const rightIdx = round.length - 1 - leftIdx;
 
   const leftMatch = round[leftIdx];
-  const vLA = d.votesLeft?.A || 0, vLB = d.votesLeft?.B || 0;
+  const vLA = d.votesLeftA || 0, vLB = d.votesLeftB || 0;
   const leftWinnerSide = vLA === vLB ? (Math.random() < 0.5 ? 'A' : 'B') : (vLA > vLB ? 'A' : 'B');
   const leftWinner = leftWinnerSide === 'A' ? leftMatch.a : leftMatch.b;
   leftMatch.winner = leftWinnerSide;
@@ -2678,7 +2686,7 @@ window.advanceWinner = async function() {
   let rightWinner = null;
   if (rightIdx >= half && rightIdx !== leftIdx && round[rightIdx]) {
     const rightMatch = round[rightIdx];
-    const vRA = d.votesRight?.A || 0, vRB = d.votesRight?.B || 0;
+    const vRA = d.votesRightA || 0, vRB = d.votesRightB || 0;
     const rightWinnerSide = vRA === vRB ? (Math.random() < 0.5 ? 'A' : 'B') : (vRA > vRB ? 'A' : 'B');
     rightWinner = rightWinnerSide === 'A' ? rightMatch.a : rightMatch.b;
     rightMatch.winner = rightWinnerSide;
@@ -2713,8 +2721,10 @@ window.advanceWinner = async function() {
     currentMatchIndex: nextMatchIndex,
     currentRound: nextRound,
     votingOpen: false,
-    votesLeft:  { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft:  now + '_L',
     matchIdRight: now + '_R',
     winner: tournamentWinner
@@ -2735,8 +2745,8 @@ window.advanceWinner = async function() {
   }
 
   if (rightWinner) {
-    const vRA2 = d.votesRight?.A || 0;
-    const vRB2 = d.votesRight?.B || 0;
+    const vRA2 = d.votesRightA || 0;
+    const vRB2 = d.votesRightB || 0;
     const totalR = vRA2 + vRB2 || 1;
     const rightTie = vRA2 === vRB2;
     const rightPct = Math.round((vRA2 > vRB2 ? vRA2 : vRB2) / totalR * 100);
@@ -2774,8 +2784,10 @@ window.resetTournament = async function() {
     currentMatchIndex: 0,
     currentRound: 0,
     votingOpen: false,
-    votesLeft: { A: 0, B: 0 },
-    votesRight: { A: 0, B: 0 },
+    votesLeftA: 0,
+    votesLeftB: 0,
+    votesRightA: 0,
+    votesRightB: 0,
     matchIdLeft: '',
     matchIdRight: '',
     winner: null,

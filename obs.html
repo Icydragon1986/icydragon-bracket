@@ -523,7 +523,7 @@ function render() {
       setObsLogo('obsLogoA', leftMatch.a || '');
       setObsLogo('obsLogoB', leftMatch.b || '');
       document.getElementById('obsNameB').textContent = leftMatch.b || '—';
-      const vA = d.votesLeft?.A || 0, vB = d.votesLeft?.B || 0;
+      const vA = d.votesLeftA || 0, vB = d.votesLeftB || 0;
       const tot = vA + vB || 1;
       document.getElementById('obsVotesA').textContent = vA;
       document.getElementById('obsVotesB').textContent = vB;
@@ -535,7 +535,7 @@ function render() {
       setObsLogo('obsLogoC', rightMatch.a || '');
       setObsLogo('obsLogoD', rightMatch.b || '');
       document.getElementById('obsNameD').textContent = rightMatch.b || '—';
-      const vC = d.votesRight?.A || 0, vD = d.votesRight?.B || 0;
+      const vC = d.votesRightA || 0, vD = d.votesRightB || 0;
       const totR = vC + vD || 1;
       document.getElementById('obsVotesC').textContent = vC;
       document.getElementById('obsVotesD').textContent = vD;
