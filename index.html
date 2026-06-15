@@ -1008,6 +1008,15 @@
   }
   .fanfav-row.top1 .fanfav-rank { color: var(--gold); }
 
+  .fanfav-rank.round-label {
+    width: 110px;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: left;
+  }
+
   .fanfav-logo {
     width: 64px;
     height: 34px;
@@ -1093,6 +1102,7 @@
     <div class="logo">Icydragon <span>Bracket</span></div>
     <div class="header-right">
       <span class="live-badge" id="liveBadge" style="display:none">LIVE</span>
+      <button class="fanfav-btn" id="myVotesBtn" onclick="toggleMyVotes()">🗳️ Mes votes</button>
       <button class="fanfav-btn" id="fanFavBtn" onclick="toggleFanFavorites()">❤️ Favoris du Public</button>
       <button class="admin-btn" onclick="openAdminModal()">⚙ Admin</button>
     </div>
@@ -1109,6 +1119,15 @@
     <p class="fanfav-subtitle">Classement par total de votes reçus à travers tout le tournoi — peu importe qui gagne le bracket!</p>
   </div>
   <div class="fanfav-list" id="fanFavList"></div>
+</div>
+
+<!-- MES VOTES PANEL -->
+<div class="fanfav-panel" id="myVotesPanel" style="display:none">
+  <div class="fanfav-header">
+    <h2>🗳️ Mes votes</h2>
+    <p class="fanfav-subtitle">Ton parcours de vote à travers le tournoi, round par round.</p>
+  </div>
+  <div class="fanfav-list" id="myVotesList"></div>
 </div>
 
 <!-- BYE MODAL -->
@@ -1470,7 +1489,15 @@ window.toggleFanFavorites = function() {
   fanFavOpen = !fanFavOpen;
   document.getElementById('fanFavPanel').style.display = fanFavOpen ? 'block' : 'none';
   document.getElementById('fanFavBtn').classList.toggle('active', fanFavOpen);
-  if (fanFavOpen) renderFanFavorites();
+  if (fanFavOpen) {
+    renderFanFavorites();
+    // Fermer "Mes votes" si ouvert
+    if (myVotesOpen) {
+      myVotesOpen = false;
+      document.getElementById('myVotesPanel').style.display = 'none';
+      document.getElementById('myVotesBtn').classList.remove('active');
+    }
+  }
 };
 
 function computeFanFavorites() {
@@ -1530,12 +1557,122 @@ function renderFanFavorites() {
   }).join('');
 }
 
+// ========== MES VOTES ==========
+let myVotesOpen = false;
+
+window.toggleMyVotes = function() {
+  myVotesOpen = !myVotesOpen;
+  document.getElementById('myVotesPanel').style.display = myVotesOpen ? 'block' : 'none';
+  document.getElementById('myVotesBtn').classList.toggle('active', myVotesOpen);
+  if (myVotesOpen) {
+    renderMyVotes();
+    // Fermer "Favoris du Public" si ouvert
+    if (fanFavOpen) {
+      fanFavOpen = false;
+      document.getElementById('fanFavPanel').style.display = 'none';
+      document.getElementById('fanFavBtn').classList.remove('active');
+    }
+  }
+};
+
+const ROUND_NAMES_MYVOTES = ['Round of 32','Round of 16','Quarts de finale','Demi-finales','Finale'];
+
+async function renderMyVotes() {
+  const list = document.getElementById('myVotesList');
+  if (!list) return;
+
+  list.innerHTML = '<div class="fanfav-empty">Chargement...</div>';
+
+  await waitForAuth();
+  await initFingerprint();
+
+  const bracket = getBracket();
+  const rows = [];
+
+  // Matchs déjà conclus avec un matchId enregistré
+  for (let rIdx = 0; rIdx < bracket.length; rIdx++) {
+    for (const match of bracket[rIdx]) {
+      if (!match.winner || !match.matchId) continue;
+      let myVote = null;
+      try {
+        const snap = await getDoc(doc(db, 'votes', match.matchId + '_' + myFingerprint));
+        if (snap.exists()) myVote = snap.data().side;
+      } catch (e) { /* pas de vote */ }
+      if (!myVote) continue;
+      const myChoice = myVote === 'A' ? match.a : match.b;
+      const won = match.winner === myVote;
+      rows.push({ round: rIdx, name: myChoice, won, status: 'done' });
+    }
+  }
+
+  // Match en cours (si tournoi actif et vote ouvert ou pas encore résolu)
+  const d = tournamentData;
+  if (bracket.length > 0 && d.currentRound < bracket.length) {
+    const round = bracket[d.currentRound];
+    const half = Math.ceil(round.length / 2);
+    const leftIdx = d.currentMatchIndex;
+    const rightIdx = round.length - 1 - leftIdx;
+    const leftMatch = round[leftIdx];
+    const rightMatch = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
+
+    for (const [match, matchId] of [[leftMatch, d.matchIdLeft], [rightMatch, d.matchIdRight]]) {
+      if (!match || !matchId || match.winner) continue;
+      let myVote = null;
+      try {
+        const snap = await getDoc(doc(db, 'votes', matchId + '_' + myFingerprint));
+        if (snap.exists()) myVote = snap.data().side;
+      } catch (e) { /* pas de vote */ }
+      if (!myVote) continue;
+      const myChoice = myVote === 'A' ? match.a : match.b;
+      rows.push({ round: d.currentRound, name: myChoice, won: null, status: 'pending' });
+    }
+  }
+
+  if (rows.length === 0) {
+    list.innerHTML = '<div class="fanfav-empty">Tu n\'as pas encore voté — clique sur ta franchise préférée dans le matchup en cours!</div>';
+    return;
+  }
+
+  let winsCount = 0, lossCount = 0;
+  rows.forEach(r => { if (r.status === 'done') { r.won ? winsCount++ : lossCount++; } });
+
+  list.innerHTML = rows.map(r => {
+    const roundName = ROUND_NAMES_MYVOTES[r.round] || ('Round ' + (r.round + 1));
+    const logoUrl = FRANCHISE_LOGOS[r.name] || '';
+    let statusBadge;
+    if (r.status === 'pending') {
+      statusBadge = '<span class="fanfav-status alive">Vote en cours</span>';
+    } else if (r.won) {
+      statusBadge = '<span class="fanfav-status alive">✓ Victoire</span>';
+    } else {
+      statusBadge = '<span class="fanfav-status eliminated-tag">✗ Éliminé</span>';
+    }
+    return `
+      <div class="fanfav-row ${r.status === 'done' && !r.won ? 'eliminated' : ''}">
+        <div class="fanfav-rank round-label">${roundName}</div>
+        ${logoUrl ? `<img class="fanfav-logo" src="${logoUrl}" alt="${r.name}" onerror="this.style.display='none'">` : ''}
+        <div class="fanfav-info">
+          <div class="fanfav-name">${r.name}</div>
+        </div>
+        ${statusBadge}
+      </div>
+    `;
+  }).join('') + (
+    (winsCount + lossCount) > 0
+      ? `<div class="fanfav-empty" style="margin-top:8px;">Tu as voté ${winsCount + lossCount} fois — ${winsCount} victoire(s), ${lossCount} défaite(s).</div>`
+      : ''
+  );
+}
+
 function render() {
   if (!tournamentData) return;
   const d = tournamentData;
 
   // Rafraîchir le panneau Favoris du Public s'il est ouvert
   if (fanFavOpen) renderFanFavorites();
+
+  // Rafraîchir le panneau Mes votes s'il est ouvert
+  if (myVotesOpen) renderMyVotes();
 
   document.getElementById('liveBadge').style.display = d.votingOpen ? 'inline' : 'none';
 
@@ -2676,6 +2813,7 @@ window.advanceWinner = async function() {
   const leftWinner = leftWinnerSide === 'A' ? leftMatch.a : leftMatch.b;
   leftMatch.winner = leftWinnerSide;
   leftMatch.votesA = vLA; leftMatch.votesB = vLB;
+  leftMatch.matchId = d.matchIdLeft || null;
 
   if (d.currentRound + 1 < bracket.length) {
     const nIdx = Math.floor(leftIdx / 2);
@@ -2691,6 +2829,7 @@ window.advanceWinner = async function() {
     rightWinner = rightWinnerSide === 'A' ? rightMatch.a : rightMatch.b;
     rightMatch.winner = rightWinnerSide;
     rightMatch.votesA = vRA; rightMatch.votesB = vRB;
+    rightMatch.matchId = d.matchIdRight || null;
 
     if (d.currentRound + 1 < bracket.length) {
       const nIdx = Math.floor(rightIdx / 2);
