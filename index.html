@@ -1161,7 +1161,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc, serverTimestamp, collection, getDocs, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import FingerprintJS from "https://openfpcdn.io/fingerprintjs/v4/esm.min.js";
 
 // ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
@@ -1182,7 +1183,44 @@ const tournamentRef = doc(db, "tournament", "main");
 // ========== STATE ==========
 let tournamentData = null;
 let isAdmin = false;
-let hasVoted = localStorage.getItem('icydragon_voted_match') || null;
+
+// ========== FINGERPRINT / VOTE TRACKING ==========
+let myFingerprint = null;
+let myVoteCache = {}; // { [matchId]: 'A' | 'B' }
+let lastCheckedMatchIdLeft = null;
+let lastCheckedMatchIdRight = null;
+
+async function initFingerprint() {
+  if (myFingerprint) return myFingerprint;
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    myFingerprint = result.visitorId;
+  } catch (e) {
+    // Fallback si FingerprintJS échoue (bloqueur de pub, etc.)
+    myFingerprint = localStorage.getItem('icydragon_fp_fallback');
+    if (!myFingerprint) {
+      myFingerprint = 'fb_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('icydragon_fp_fallback', myFingerprint);
+    }
+  }
+  return myFingerprint;
+}
+// Démarrer la génération du fingerprint dès le chargement, sans bloquer
+initFingerprint();
+
+async function checkMyVote(matchId) {
+  if (!matchId) return;
+  await initFingerprint();
+  const docId = matchId + '_' + myFingerprint;
+  try {
+    const snap = await getDoc(doc(db, 'votes', docId));
+    myVoteCache[matchId] = snap.exists() ? snap.data().side : null;
+  } catch (e) {
+    myVoteCache[matchId] = null;
+  }
+  renderCurrentMatchup();
+}
 
 // ========== INIT ==========
 onSnapshot(tournamentRef, (snap) => {
@@ -1243,6 +1281,16 @@ function render() {
 
   // Next match
   updateNextMatch();
+
+  // Vérifier mon vote (fingerprint) si le match a changé
+  if (d.matchIdLeft && d.matchIdLeft !== lastCheckedMatchIdLeft) {
+    lastCheckedMatchIdLeft = d.matchIdLeft;
+    checkMyVote(d.matchIdLeft);
+  }
+  if (d.matchIdRight && d.matchIdRight !== lastCheckedMatchIdRight) {
+    lastCheckedMatchIdRight = d.matchIdRight;
+    checkMyVote(d.matchIdRight);
+  }
 
   if (d.winner) {
     document.getElementById('winnerSection').style.display = 'block';
@@ -1307,14 +1355,14 @@ function renderCurrentMatchup() {
     document.getElementById('votesA').textContent = vA;
     document.getElementById('votesB').textContent = vB;
     document.getElementById('voteBarALeft').style.width = Math.round(vA/tot*100) + '%';
-    const myL = localStorage.getItem('icydragon_left_' + d.matchIdLeft);
+    const myL = myVoteCache[d.matchIdLeft] || null;
     document.getElementById('contestantA').classList.toggle('voted', myL === 'A');
     document.getElementById('contestantB').classList.toggle('voted', myL === 'B');
     const fL = document.getElementById('matchupFooterLeft');
     const sL = document.getElementById('voteStatus');
     if (d.votingOpen) {
       sL.innerHTML = '🟢 Vote <span>ouvert</span>';
-      fL.innerHTML = myL ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myL==='A'?leftMatch.a:leftMatch.b) + '</strong></div>' : '';
+      fL.innerHTML = myL ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myL==='A'?leftMatch.a:leftMatch.b) + '</strong> — cliquez sur l\'autre pour changer</div>' : '';
     } else {
       sL.innerHTML = '🔴 Vote <span style="color:var(--muted)">fermé</span>';
       fL.innerHTML = '<div class="vote-closed-msg">⏳ Vote fermé</div>';
@@ -1332,14 +1380,14 @@ function renderCurrentMatchup() {
     document.getElementById('votesC').textContent = vC;
     document.getElementById('votesD').textContent = vD;
     document.getElementById('voteBarARight').style.width = Math.round(vC/totR*100) + '%';
-    const myR = localStorage.getItem('icydragon_right_' + d.matchIdRight);
+    const myR = myVoteCache[d.matchIdRight] || null;
     document.getElementById('contestantC').classList.toggle('voted', myR === 'A');
     document.getElementById('contestantD').classList.toggle('voted', myR === 'B');
     const fR = document.getElementById('matchupFooterRight');
     const sR = document.getElementById('voteStatusRight');
     if (d.votingOpen) {
       sR.innerHTML = '🟢 Vote <span>ouvert</span>';
-      fR.innerHTML = myR ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myR==='A'?rightMatch.a:rightMatch.b) + '</strong></div>' : '';
+      fR.innerHTML = myR ? '<div class="already-voted-msg">✓ Voté pour <strong>' + (myR==='A'?rightMatch.a:rightMatch.b) + '</strong> — cliquez sur l\'autre pour changer</div>' : '';
     } else {
       sR.innerHTML = '🔴 Vote <span style="color:var(--muted)">fermé</span>';
       fR.innerHTML = '<div class="vote-closed-msg">⏳ Vote fermé</div>';
@@ -2179,21 +2227,38 @@ window.castVote = async function(matchSide, voteSide) {
   const d = tournamentData;
   if (!d.votingOpen) return;
 
-  if (matchSide === 'left') {
-    const key = 'icydragon_left_' + d.matchIdLeft;
-    if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, voteSide);
-    const newVotes = { ...(d.votesLeft || {}) };
-    newVotes[voteSide] = (newVotes[voteSide] || 0) + 1;
-    await updateDoc(tournamentRef, { votesLeft: newVotes });
+  await initFingerprint();
+
+  const matchId = matchSide === 'left' ? d.matchIdLeft : d.matchIdRight;
+  const voteField = matchSide === 'left' ? 'votesLeft' : 'votesRight';
+  const existingSide = myVoteCache[matchId] || null;
+
+  // Même choix qu'avant — rien à faire
+  if (existingSide === voteSide) return;
+
+  const docId = matchId + '_' + myFingerprint;
+  const voteDocRef = doc(db, 'votes', docId);
+
+  const updates = {};
+  if (existingSide) {
+    // Changement de vote : retirer l'ancien, ajouter le nouveau
+    updates[voteField + '.' + existingSide] = increment(-1);
+    updates[voteField + '.' + voteSide] = increment(1);
   } else {
-    const key = 'icydragon_right_' + d.matchIdRight;
-    if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, voteSide);
-    const newVotes = { ...(d.votesRight || {}) };
-    newVotes[voteSide] = (newVotes[voteSide] || 0) + 1;
-    await updateDoc(tournamentRef, { votesRight: newVotes });
+    // Premier vote sur ce match
+    updates[voteField + '.' + voteSide] = increment(1);
   }
+
+  await updateDoc(tournamentRef, updates);
+  await setDoc(voteDocRef, {
+    side: voteSide,
+    matchId,
+    matchSide,
+    timestamp: serverTimestamp()
+  });
+
+  myVoteCache[matchId] = voteSide;
+  renderCurrentMatchup();
 };
 
 // ========== ADMIN ACTIONS ==========
@@ -2422,7 +2487,21 @@ window.advanceWinner = async function() {
 };
 
 window.resetTournament = async function() {
-  if (!confirm('Réinitialiser tout le tournoi?')) return;
+  if (!confirm('Réinitialiser tout le tournoi? Ceci effacera aussi tous les votes enregistrés.')) return;
+
+  // Nettoyer la collection de votes (par lots de 450 pour respecter la limite Firestore)
+  try {
+    const votesSnap = await getDocs(collection(db, 'votes'));
+    const docs = votesSnap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+      const batch = writeBatch(db);
+      docs.slice(i, i + 450).forEach(docSnap => batch.delete(docSnap.ref));
+      await batch.commit();
+    }
+  } catch (e) {
+    console.warn('[Votes] Erreur lors du nettoyage:', e);
+  }
+
   await setDoc(tournamentRef, {
     franchises: tournamentData?.franchises || [],
     numRounds: 0,
@@ -2436,6 +2515,12 @@ window.resetTournament = async function() {
     winner: null,
     status: 'setup'
   });
+
+  // Réinitialiser le cache local de votes
+  myVoteCache = {};
+  lastCheckedMatchIdLeft = null;
+  lastCheckedMatchIdRight = null;
+
   showStatus('Tournoi réinitialisé.', 'info');
 };
 
