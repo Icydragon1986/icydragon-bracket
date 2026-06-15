@@ -1326,6 +1326,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc, serverTimestamp, collection, getDocs, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
@@ -1337,15 +1338,43 @@ const firebaseConfig = {
   appId: "1:996781932088:web:be25deba8f95f5215770cd"
 };
 
-const ADMIN_PASSWORD = "icydragon1986"; // Change this!
+const ADMIN_EMAIL = "darkfoce16@hotmail.com";
+const ADMIN_UID = "LZ3v46yynRTV2HNcY8PFg5FS3M82";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const tournamentRef = doc(db, "tournament", "main");
 
 // ========== STATE ==========
 let tournamentData = null;
 let isAdmin = false;
+
+// ========== AUTH ==========
+// Tous les visiteurs (viewers ET admin) doivent être connectés pour que
+// castVote() fonctionne (règles Firestore exigent request.auth != null).
+// Par défaut, connexion anonyme silencieuse pour les viewers.
+let authReadyResolve;
+const authReady = new Promise((resolve) => { authReadyResolve = resolve; });
+
+function waitForAuth() {
+  return authReady;
+}
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    signInAnonymously(auth).catch((e) => console.warn('[Auth] Connexion anonyme échouée:', e));
+    return;
+  }
+  // Si l'utilisateur connecté correspond à l'admin, restaurer le panneau admin
+  if (user.uid === ADMIN_UID && !isAdmin) {
+    isAdmin = true;
+    document.getElementById('adminPanel')?.classList.add('open');
+    renderAdminFranchises();
+    initStreamerBot();
+  }
+  authReadyResolve();
+});
 
 // ========== FINGERPRINT / VOTE TRACKING ==========
 let myFingerprint = null;
@@ -2463,6 +2492,7 @@ window.castVote = async function(matchSide, voteSide) {
   const d = tournamentData;
   if (!d.votingOpen) return;
 
+  await waitForAuth();
   await initFingerprint();
 
   const matchId = matchSide === 'left' ? d.matchIdLeft : d.matchIdRight;
@@ -2780,6 +2810,7 @@ window.openAdminModal = function() {
   if (isAdmin) {
     isAdmin = false;
     document.getElementById('adminPanel').classList.remove('open');
+    signOut(auth).catch((e) => console.warn('[Auth] Déconnexion échouée:', e));
     return;
   }
   document.getElementById('adminModal').classList.add('open');
@@ -2791,15 +2822,16 @@ window.closeAdminModal = function() {
   document.getElementById('adminPassword').value = '';
 };
 
-window.checkAdmin = function() {
+window.checkAdmin = async function() {
   const pw = document.getElementById('adminPassword').value;
-  if (pw === ADMIN_PASSWORD) {
+  try {
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, pw);
     isAdmin = true;
     document.getElementById('adminPanel').classList.add('open');
     closeAdminModal();
     renderAdminFranchises();
     initStreamerBot();
-  } else {
+  } catch (e) {
     const err = document.getElementById('adminError');
     err.textContent = 'Mot de passe incorrect.';
     err.className = 'status-msg show error';
