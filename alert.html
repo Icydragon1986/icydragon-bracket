@@ -19,14 +19,23 @@
     font-family: 'Inter', sans-serif;
   }
 
+  #confettiCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 1920px; height: 1080px;
+    pointer-events: none;
+    z-index: 100;
+  }
+
   .alert-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0;
     transform: translateY(120px);
     opacity: 0;
     transition: none;
+    position: relative;
+    z-index: 10;
   }
 
   .alert-wrapper.show {
@@ -39,17 +48,17 @@
 
   @keyframes slideIn {
     from { transform: translateY(120px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
+    to   { transform: translateY(0);     opacity: 1; }
   }
 
   @keyframes slideOut {
-    from { transform: translateY(0);    opacity: 1; }
+    from { transform: translateY(0);     opacity: 1; }
     to   { transform: translateY(120px); opacity: 0; }
   }
 
   /* ===== VOTE OUVERT ===== */
   .alert-vote {
-    background: linear-gradient(135deg, #0a0e1a ee, #111827 100%);
+    background: linear-gradient(135deg, #0a0e1aee, #111827ee);
     border: 2px solid #00c8ff;
     border-radius: 16px;
     padding: 20px 36px;
@@ -124,7 +133,7 @@
 
   /* ===== RÉSULTATS ===== */
   .alert-results {
-    background: linear-gradient(135deg, #0a0e1aee, #111827 100%);
+    background: linear-gradient(135deg, #0a0e1aee, #111827ee);
     border: 2px solid #10b981;
     border-radius: 16px;
     padding: 20px 36px;
@@ -197,13 +206,111 @@
     text-transform: uppercase;
     font-family: 'Rajdhani', sans-serif;
   }
+
+  /* ===== FINALE ===== */
+  .alert-finale {
+    background: linear-gradient(135deg, #1a1200ee, #2d1f00ee);
+    border: 3px solid #f59e0b;
+    border-radius: 20px;
+    padding: 32px 48px;
+    min-width: 800px;
+    max-width: 1200px;
+    box-shadow:
+      0 0 60px rgba(245,158,11,0.5),
+      0 0 120px rgba(245,158,11,0.2),
+      0 8px 32px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  .alert-finale::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #f59e0b, #fcd34d, #f59e0b, #fcd34d, #f59e0b);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .finale-crown {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 8px;
+    animation: crownBounce 0.8s ease infinite alternate;
+  }
+
+  @keyframes crownBounce {
+    from { transform: translateY(0) scale(1); }
+    to   { transform: translateY(-8px) scale(1.1); }
+  }
+
+  .finale-logo {
+    width: 200px;
+    height: 100px;
+    object-fit: contain;
+    display: block;
+    margin: 12px auto;
+    filter: drop-shadow(0 0 20px rgba(245,158,11,0.8));
+    animation: logoGlow 1.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes logoGlow {
+    from { filter: drop-shadow(0 0 10px rgba(245,158,11,0.4)); }
+    to   { filter: drop-shadow(0 0 30px rgba(245,158,11,1)); }
+  }
+
+  .finale-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #f59e0b;
+    margin-bottom: 8px;
+  }
+
+  .finale-winner {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #fcd34d;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(245,158,11,0.8);
+    animation: textPulse 1.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes textPulse {
+    from { text-shadow: 0 0 20px rgba(245,158,11,0.5); }
+    to   { text-shadow: 0 0 40px rgba(245,158,11,1), 0 0 80px rgba(245,158,11,0.4); }
+  }
+
+  .finale-pct {
+    font-size: 1.1rem;
+    color: #10b981;
+    font-weight: 600;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  .finale-trophy {
+    font-size: 2rem;
+    margin-top: 12px;
+    display: block;
+  }
 </style>
 </head>
 <body>
 
-<div class="alert-wrapper" id="alertWrapper">
-  <!-- Contenu injecté dynamiquement -->
-</div>
+<canvas id="confettiCanvas"></canvas>
+<div class="alert-wrapper" id="alertWrapper"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -218,19 +325,97 @@ const firebaseConfig = {
   appId: "1:996781932088:web:be25deba8f95f5215770cd"
 };
 
+const LOGOS_BASE = "https://icydragon1986.github.io/icydragon-bracket/logos/";
+const FRANCHISE_LOGOS = {
+  "Adibou":"adibou.png","Assassin's Creed":"assassins_creed.png","Batman":"batman.png",
+  "Bomberman":"bomberman.png","Castlevania":"castlevania.png","Dark Souls":"dark_souls.png",
+  "Disney Mickey Mouse":"disney_mickey_mouse.png","Donkey Kong":"donkey_kong.png",
+  "Duke Nukem":"duke_nukem.png","Final Fantasy":"final_fantasy.png","Fire Emblem":"fire_emblem.png",
+  "Freddi Fish":"freddi_fish.png","Garfield":"garfield.png","God of War":"god_of_war.png",
+  "Half Life":"half_life.png","Hamtaro":"hamtaro.png","Kirby":"kirby.png",
+  "Mario Bros.":"mario_bros.png","MegaMan":"megaman.png","Metroid":"metroid.png",
+  "Phoenix Wright":"phoenix_wright.png","Pikmin":"pikmin.png","Pokemon":"pokemon.png",
+  "Secret of Mana":"secret_of_mana.png","Silent Hill":"silent_hill.png","Sly Cooper":"sly_cooper.png",
+  "Sonic":"sonic.png","Teenage Mutant Ninja Turtles":"tmnt.png","Tomb Raider":"tomb_raider.png",
+  "The Elder Scrolls":"elder_scrolls.png","Uncharted":"uncharted.png","Wario":"wario.png",
+};
+
+function getLogoUrl(name) {
+  const f = FRANCHISE_LOGOS[name];
+  return f ? LOGOS_BASE + f : null;
+}
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const tournamentRef = doc(db, "tournament", "main");
 
 const wrapper = document.getElementById('alertWrapper');
+const confettiCanvas = document.getElementById('confettiCanvas');
 let hideTimeout = null;
 let lastAlertTs = null;
+let confettiAnim = null;
 
-function showAlert(html) {
+// ===== CONFETTIS =====
+function launchConfetti(duration = 5000) {
+  const ctx = confettiCanvas.getContext('2d');
+  confettiCanvas.width = 1920;
+  confettiCanvas.height = 1080;
+
+  const colors = ['#f59e0b','#fcd34d','#ffffff','#10b981','#00c8ff','#7c3aed','#ef4444','#fbbf24'];
+  const particles = [];
+  for (let i = 0; i < 200; i++) {
+    particles.push({
+      x: Math.random() * 1920,
+      y: -20 - Math.random() * 200,
+      w: 10 + Math.random() * 10,
+      h: 5 + Math.random() * 8,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+      vx: (Math.random() - 0.5) * 4,
+      vy: 3 + Math.random() * 5,
+      opacity: 1,
+    });
+  }
+
+  const start = Date.now();
+  function animate() {
+    const elapsed = Date.now() - start;
+    const progress = elapsed / duration;
+    ctx.clearRect(0, 0, 1920, 1080);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.1;
+      p.rotation += p.rotSpeed;
+      p.opacity = progress > 0.6 ? Math.max(0, 1 - (progress - 0.6) / 0.4) : 1;
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+      // Rebond en bas
+      if (p.y > 1080 + 20) { p.y = -20; p.x = Math.random() * 1920; p.vy = 3 + Math.random() * 5; }
+    });
+    if (elapsed < duration) {
+      confettiAnim = requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, 1920, 1080);
+    }
+  }
+  if (confettiAnim) cancelAnimationFrame(confettiAnim);
+  animate();
+}
+
+// ===== SHOW / HIDE =====
+function showAlert(html, duration = 10000) {
   if (hideTimeout) clearTimeout(hideTimeout);
+  if (confettiAnim) { cancelAnimationFrame(confettiAnim); confettiCanvas.getContext('2d').clearRect(0,0,1920,1080); }
   wrapper.innerHTML = html;
   wrapper.className = 'alert-wrapper';
-  void wrapper.offsetWidth; // force reflow
+  void wrapper.offsetWidth;
   wrapper.classList.add('show');
 
   hideTimeout = setTimeout(() => {
@@ -240,16 +425,15 @@ function showAlert(html) {
       wrapper.className = 'alert-wrapper';
       wrapper.innerHTML = '';
     }, 450);
-  }, 10000);
+  }, duration);
 }
 
+// ===== FIRESTORE LISTENER =====
 onSnapshot(tournamentRef, (snap) => {
   if (!snap.exists()) return;
   const d = snap.data();
   const alert = d.alert;
   if (!alert || !alert.timestamp) return;
-
-  // Ne pas rejouer une alerte déjà vue
   if (alert.timestamp === lastAlertTs) return;
   lastAlertTs = alert.timestamp;
 
@@ -310,6 +494,28 @@ onSnapshot(tournamentRef, (snap) => {
         <div class="alert-round">${alert.roundName || ''}</div>
       </div>
     `);
+
+  } else if (alert.type === 'finale') {
+    const winner = alert.left?.winner || '';
+    const pct = alert.left?.pct || 0;
+    const tie = alert.left?.tie || false;
+    const logoUrl = getLogoUrl(winner);
+    const pctHtml = tie
+      ? `<div class="finale-pct">🎲 Victoire par tirage au sort</div>`
+      : `<div class="finale-pct">🏆 ${pct}% des votes</div>`;
+
+    showAlert(`
+      <div class="alert-finale">
+        <span class="finale-crown">👑</span>
+        ${logoUrl ? `<img class="finale-logo" src="${logoUrl}" alt="${winner}" onerror="this.style.display='none'">` : ''}
+        <div class="finale-label">🎉 Champion du tournoi 🎉</div>
+        <div class="finale-winner">${winner}</div>
+        ${pctHtml}
+        <span class="finale-trophy">🏆✨🏆</span>
+      </div>
+    `, 15000); // 15 secondes pour la finale
+
+    launchConfetti(15000);
   }
 });
 </script>
