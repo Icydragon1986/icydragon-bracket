@@ -930,6 +930,160 @@
     letter-spacing: 0.5px;
   }
   #audioUnlockBanner.active:hover { background: rgba(16, 185, 129, 0.15); }
+
+  /* FAN FAVORITES */
+  .fanfav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .fanfav-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .fanfav-btn.active { border-color: var(--accent2); color: var(--accent2); background: rgba(124,58,237,0.1); }
+
+  .fanfav-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px 24px;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+
+  .fanfav-header h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .fanfav-subtitle {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .fanfav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .fanfav-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: opacity 0.3s;
+  }
+
+  .fanfav-row.top1 {
+    border-color: var(--gold);
+    background: linear-gradient(90deg, rgba(245,158,11,0.12), var(--surface2));
+  }
+
+  .fanfav-row.eliminated {
+    opacity: 0.55;
+  }
+
+  .fanfav-rank {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--muted);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .fanfav-row.top1 .fanfav-rank { color: var(--gold); }
+
+  .fanfav-logo {
+    width: 64px;
+    height: 34px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .fanfav-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fanfav-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .fanfav-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .fanfav-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.6s ease;
+  }
+  .fanfav-row.top1 .fanfav-bar-fill {
+    background: linear-gradient(90deg, var(--gold), #fbbf24);
+  }
+
+  .fanfav-votes {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    min-width: 60px;
+    text-align: right;
+  }
+  .fanfav-row.top1 .fanfav-votes { color: var(--gold); }
+
+  .fanfav-status {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .fanfav-status.alive {
+    background: rgba(16,185,129,0.15);
+    color: var(--win);
+  }
+  .fanfav-status.eliminated-tag {
+    background: rgba(100,116,139,0.15);
+    color: var(--muted);
+  }
+
+  .fanfav-empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+    font-size: 0.9rem;
+  }
 </style>
 </head>
 <body>
@@ -939,6 +1093,7 @@
     <div class="logo">Icydragon <span>Bracket</span></div>
     <div class="header-right">
       <span class="live-badge" id="liveBadge" style="display:none">LIVE</span>
+      <button class="fanfav-btn" id="fanFavBtn" onclick="toggleFanFavorites()">❤️ Favoris du Public</button>
       <button class="admin-btn" onclick="openAdminModal()">⚙ Admin</button>
     </div>
   </div>
@@ -946,6 +1101,15 @@
     🔊 Clique ici pour activer les musiques de franchise au survol
   </div>
 </header>
+
+<!-- FAN FAVORITES PANEL -->
+<div class="fanfav-panel" id="fanFavPanel" style="display:none">
+  <div class="fanfav-header">
+    <h2>❤️ Favoris du Public</h2>
+    <p class="fanfav-subtitle">Classement par total de votes reçus à travers tout le tournoi — peu importe qui gagne le bracket!</p>
+  </div>
+  <div class="fanfav-list" id="fanFavList"></div>
+</div>
 
 <!-- BYE MODAL -->
 <div class="modal-overlay" id="byeModal">
@@ -1162,7 +1326,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc, serverTimestamp, collection, getDocs, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import FingerprintJS from "https://openfpcdn.io/fingerprintjs/v4/esm.min.js";
 
 // ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
@@ -1193,11 +1356,14 @@ let lastCheckedMatchIdRight = null;
 async function initFingerprint() {
   if (myFingerprint) return myFingerprint;
   try {
+    // Import dynamique : si bloqué par un bloqueur de pub/extension, ne casse pas le reste du site
+    const mod = await import("https://openfpcdn.io/fingerprintjs/v4/esm.min.js");
+    const FingerprintJS = mod.default;
     const fp = await FingerprintJS.load();
     const result = await fp.get();
     myFingerprint = result.visitorId;
   } catch (e) {
-    // Fallback si FingerprintJS échoue (bloqueur de pub, etc.)
+    // Fallback si FingerprintJS échoue (bloqueur de pub, CORS, etc.)
     myFingerprint = localStorage.getItem('icydragon_fp_fallback');
     if (!myFingerprint) {
       myFingerprint = 'fb_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -1266,9 +1432,79 @@ function getBracket() {
   return flatToBracket(tournamentData);
 }
 
+// ========== FAN FAVORITES ==========
+let fanFavOpen = false;
+
+window.toggleFanFavorites = function() {
+  fanFavOpen = !fanFavOpen;
+  document.getElementById('fanFavPanel').style.display = fanFavOpen ? 'block' : 'none';
+  document.getElementById('fanFavBtn').classList.toggle('active', fanFavOpen);
+  if (fanFavOpen) renderFanFavorites();
+};
+
+function computeFanFavorites() {
+  const bracket = getBracket();
+  const totals = {};   // { nom: votesCumulés }
+  const eliminated = {}; // { nom: true/false }
+
+  bracket.forEach(round => {
+    round.forEach(match => {
+      if (match.a) {
+        totals[match.a] = (totals[match.a] || 0) + (match.votesA || 0);
+        if (match.winner) eliminated[match.a] = (match.winner !== 'A');
+      }
+      if (match.b) {
+        totals[match.b] = (totals[match.b] || 0) + (match.votesB || 0);
+        if (match.winner) eliminated[match.b] = (match.winner !== 'B');
+      }
+    });
+  });
+
+  return Object.keys(totals)
+    .map(name => ({ name, votes: totals[name], eliminated: !!eliminated[name] }))
+    .sort((a, b) => b.votes - a.votes);
+}
+
+function renderFanFavorites() {
+  const list = document.getElementById('fanFavList');
+  if (!list) return;
+
+  const ranking = computeFanFavorites();
+
+  if (ranking.length === 0 || ranking.every(r => r.votes === 0)) {
+    list.innerHTML = '<div class="fanfav-empty">Le tournoi n\'a pas encore commencé — revenez après les premiers votes!</div>';
+    return;
+  }
+
+  const maxVotes = Math.max(...ranking.map(r => r.votes), 1);
+
+  list.innerHTML = ranking.map((r, i) => {
+    const pct = Math.round((r.votes / maxVotes) * 100);
+    const logoUrl = FRANCHISE_LOGOS[r.name] || '';
+    const statusBadge = r.eliminated
+      ? '<span class="fanfav-status eliminated-tag">Éliminé</span>'
+      : '<span class="fanfav-status alive">En lice</span>';
+    return `
+      <div class="fanfav-row ${i === 0 ? 'top1' : ''} ${r.eliminated ? 'eliminated' : ''}">
+        <div class="fanfav-rank">${i === 0 ? '👑' : '#' + (i + 1)}</div>
+        ${logoUrl ? `<img class="fanfav-logo" src="${logoUrl}" alt="${r.name}" onerror="this.style.display='none'">` : ''}
+        <div class="fanfav-info">
+          <div class="fanfav-name">${r.name}</div>
+          <div class="fanfav-bar-bg"><div class="fanfav-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="fanfav-votes">${r.votes}</div>
+        ${statusBadge}
+      </div>
+    `;
+  }).join('');
+}
+
 function render() {
   if (!tournamentData) return;
   const d = tournamentData;
+
+  // Rafraîchir le panneau Favoris du Public s'il est ouvert
+  if (fanFavOpen) renderFanFavorites();
 
   document.getElementById('liveBadge').style.display = d.votingOpen ? 'inline' : 'none';
 
