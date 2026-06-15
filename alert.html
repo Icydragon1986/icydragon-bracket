@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bracket Alert</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .alert-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    transform: translateY(120px);
+    opacity: 0;
+    transition: none;
+  }
+
+  .alert-wrapper.show {
+    animation: slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .alert-wrapper.hide {
+    animation: slideOut 0.4s ease-in forwards;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(120px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  @keyframes slideOut {
+    from { transform: translateY(0);    opacity: 1; }
+    to   { transform: translateY(120px); opacity: 0; }
+  }
+
+  /* ===== VOTE OUVERT ===== */
+  .alert-vote {
+    background: linear-gradient(135deg, #0a0e1a ee, #111827 100%);
+    border: 2px solid #00c8ff;
+    border-radius: 16px;
+    padding: 20px 36px;
+    min-width: 700px;
+    max-width: 1100px;
+    box-shadow: 0 0 40px rgba(0,200,255,0.25), 0 8px 32px rgba(0,0,0,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .alert-vote::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #00c8ff, #7c3aed);
+  }
+
+  .alert-vote-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #00c8ff;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .alert-vote-matchups {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .alert-matchup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .alert-franchise {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    white-space: nowrap;
+  }
+
+  .alert-vs {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #64748b;
+  }
+
+  .alert-sep {
+    font-size: 1.4rem;
+    color: #7c3aed;
+    padding: 0 4px;
+  }
+
+  .alert-url {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #64748b;
+    letter-spacing: 1px;
+  }
+
+  /* ===== RÉSULTATS ===== */
+  .alert-results {
+    background: linear-gradient(135deg, #0a0e1aee, #111827 100%);
+    border: 2px solid #10b981;
+    border-radius: 16px;
+    padding: 20px 36px;
+    min-width: 700px;
+    max-width: 1100px;
+    box-shadow: 0 0 40px rgba(16,185,129,0.2), 0 8px 32px rgba(0,0,0,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .alert-results::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #10b981, #f59e0b);
+  }
+
+  .alert-results-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #10b981;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .alert-results-matchups {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .alert-result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .alert-result-winner {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #10b981;
+    white-space: nowrap;
+  }
+
+  .alert-result-pct {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f59e0b;
+    white-space: nowrap;
+  }
+
+  .alert-result-tie {
+    font-size: 0.85rem;
+    color: #f59e0b;
+  }
+
+  .alert-round {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #64748b;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'Rajdhani', sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<div class="alert-wrapper" id="alertWrapper">
+  <!-- Contenu injecté dynamiquement -->
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCryxnVICzNQ5rTNY9jiiOiXUdj7d3E9Jo",
+  authDomain: "icydragon-bracket.firebaseapp.com",
+  projectId: "icydragon-bracket",
+  storageBucket: "icydragon-bracket.firebasestorage.app",
+  messagingSenderId: "996781932088",
+  appId: "1:996781932088:web:be25deba8f95f5215770cd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const tournamentRef = doc(db, "tournament", "main");
+
+const wrapper = document.getElementById('alertWrapper');
+let hideTimeout = null;
+let lastAlertTs = null;
+
+function showAlert(html) {
+  if (hideTimeout) clearTimeout(hideTimeout);
+  wrapper.innerHTML = html;
+  wrapper.className = 'alert-wrapper';
+  void wrapper.offsetWidth; // force reflow
+  wrapper.classList.add('show');
+
+  hideTimeout = setTimeout(() => {
+    wrapper.classList.remove('show');
+    wrapper.classList.add('hide');
+    setTimeout(() => {
+      wrapper.className = 'alert-wrapper';
+      wrapper.innerHTML = '';
+    }, 450);
+  }, 10000);
+}
+
+onSnapshot(tournamentRef, (snap) => {
+  if (!snap.exists()) return;
+  const d = snap.data();
+  const alert = d.alert;
+  if (!alert || !alert.timestamp) return;
+
+  // Ne pas rejouer une alerte déjà vue
+  if (alert.timestamp === lastAlertTs) return;
+  lastAlertTs = alert.timestamp;
+
+  if (alert.type === 'vote') {
+    let matchupsHtml = '';
+    if (alert.left) {
+      matchupsHtml += `
+        <div class="alert-matchup">
+          <span class="alert-franchise">${alert.left.a}</span>
+          <span class="alert-vs">VS</span>
+          <span class="alert-franchise">${alert.left.b}</span>
+        </div>`;
+    }
+    if (alert.right) {
+      matchupsHtml += `
+        <span class="alert-sep">⚔</span>
+        <div class="alert-matchup">
+          <span class="alert-franchise">${alert.right.a}</span>
+          <span class="alert-vs">VS</span>
+          <span class="alert-franchise">${alert.right.b}</span>
+        </div>`;
+    }
+    showAlert(`
+      <div class="alert-vote">
+        <div class="alert-vote-label">🗳️ Vote ouvert — ${alert.roundName || ''}</div>
+        <div class="alert-vote-matchups">${matchupsHtml}</div>
+        <div class="alert-url">icydragon1986.github.io/icydragon-bracket</div>
+      </div>
+    `);
+
+  } else if (alert.type === 'results') {
+    let resultsHtml = '';
+    if (alert.left) {
+      const pctHtml = alert.left.tie
+        ? `<span class="alert-result-tie">🎲 Tirage au sort</span>`
+        : `<span class="alert-result-pct">${alert.left.pct}%</span>`;
+      resultsHtml += `
+        <div class="alert-result-item">
+          <span class="alert-result-winner">🏆 ${alert.left.winner}</span>
+          ${pctHtml}
+        </div>`;
+    }
+    if (alert.right) {
+      const pctHtml = alert.right.tie
+        ? `<span class="alert-result-tie">🎲 Tirage au sort</span>`
+        : `<span class="alert-result-pct">${alert.right.pct}%</span>`;
+      resultsHtml += `
+        <span class="alert-sep">⚔</span>
+        <div class="alert-result-item">
+          <span class="alert-result-winner">🏆 ${alert.right.winner}</span>
+          ${pctHtml}
+        </div>`;
+    }
+    showAlert(`
+      <div class="alert-results">
+        <div class="alert-results-label">Résultats — ${alert.roundName || ''}</div>
+        <div class="alert-results-matchups">${resultsHtml}</div>
+        <div class="alert-round">${alert.roundName || ''}</div>
+      </div>
+    `);
+  }
+});
+</script>
+</body>
+</html>

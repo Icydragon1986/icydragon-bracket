@@ -2494,6 +2494,8 @@ function bindAudioHover() {
 
 // ========== STREAMER.BOT WEBSOCKET ==========
 const SB_ACTION_ID = 'b70ccb10-b461-448d-b3e6-c601d58bd078';
+// Action Streamer.bot dédiée aux alertes OBS (Show/Wait 10s/Hide la scène "Bracket Alert")
+const SB_OBS_ACTION_ID = '70aa875d-d944-4dc6-a26c-2c440b5aea2a';
 let sbSocket = null;
 let sbConnected = false;
 let sbQueue = [];
@@ -2537,6 +2539,17 @@ function sendTwitchMessage(msg) {
     sbQueue.push(msg);
     connectStreamerBot();
   }
+}
+
+function sendOBSAlert() {
+  if (SB_OBS_ACTION_ID === 'REMPLACE_PAR_TON_ACTION_ID') return; // pas encore configuré
+  if (!sbSocket || sbSocket.readyState !== WebSocket.OPEN) return;
+  sbSocket.send(JSON.stringify({
+    request: 'DoAction',
+    id: 'obs-alert-' + Date.now(),
+    action: { id: SB_OBS_ACTION_ID },
+    args: {}
+  }));
 }
 
 function initStreamerBot() {
@@ -2790,6 +2803,17 @@ window.openVoting = async function() {
     msg += ' → https://icydragon1986.github.io/icydragon-bracket';
 
     sendTwitchMessage(msg);
+
+    // Alerte OBS
+    const alertData = {
+      type: 'vote',
+      roundName: roundName,
+      timestamp: Date.now(),
+      left: leftMatch ? { a: leftMatch.a, b: leftMatch.b } : null,
+      right: rightMatch ? { a: rightMatch.a, b: rightMatch.b } : null,
+    };
+    await updateDoc(tournamentRef, { alert: alertData });
+    sendOBSAlert();
   }
 };
 
@@ -2897,6 +2921,30 @@ window.advanceWinner = async function() {
   }
 
   sendTwitchMessage(msg);
+
+  // Alerte OBS — résultats
+  const vRA2 = d.votesRightA || 0;
+  const vRB2 = d.votesRightB || 0;
+  const totalR2 = vRA2 + vRB2 || 1;
+  const rightTie2 = vRA2 === vRB2;
+  const rightPct2 = Math.round((vRA2 > vRB2 ? vRA2 : vRB2) / totalR2 * 100);
+  const alertData = {
+    type: 'results',
+    roundName: roundNameMsg,
+    timestamp: Date.now(),
+    left: {
+      winner: leftWinner,
+      pct: leftPct,
+      tie: leftTie,
+    },
+    right: rightWinner ? {
+      winner: rightWinner,
+      pct: rightPct2,
+      tie: rightTie2,
+    } : null,
+  };
+  await updateDoc(tournamentRef, { alert: alertData });
+  sendOBSAlert();
 
   showStatus(leftWinner + (rightWinner ? ' & ' + rightWinner : '') + ' avancent!', 'success');
 };
