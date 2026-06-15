@@ -92,6 +92,37 @@
   }
   .admin-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+  .twitch-header-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #bf94ff;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid #9147ff33;
+    background: #9147ff11;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .twitch-header-link:hover {
+    background: #9147ff22;
+    border-color: #9147ff66;
+    color: #d4b0ff;
+  }
+  .twitch-header-cta {
+    color: #9147ff;
+    font-weight: 700;
+  }
+  @media (max-width: 900px) {
+    .twitch-header-link span:first-of-type { display: none; }
+  }
+  @media (max-width: 600px) {
+    .twitch-header-link { display: none; }
+  }
+
   /* MAIN LAYOUT */
   main {
     max-width: 100%;
@@ -1148,6 +1179,11 @@
 <header>
   <div class="header-top">
     <div class="logo">Icydragon <span>Bracket</span></div>
+    <a class="twitch-header-link" href="https://twitch.tv/icydragon1986" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+      <span>Tu découvres ce tournoi ?</span>
+      <span class="twitch-header-cta">Viens voir ça en live sur Twitch →</span>
+    </a>
     <div class="header-right">
       <span class="live-badge" id="liveBadge" style="display:none">LIVE</span>
       <button class="fanfav-btn" id="myVotesBtn" onclick="toggleMyVotes()">🗳️ Mes votes</button>
