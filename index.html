@@ -2179,6 +2179,24 @@ function renderAdminFranchises() {
 }
 
 // ========== BYE ==========
+function propagateWinner(bracket, currentRound, matchIdx, side, winner) {
+  if (currentRound + 1 >= bracket.length) return;
+  const nIdx = Math.floor(matchIdx / 2);
+  if (side === 'left') {
+    if (matchIdx % 2 === 0) bracket[currentRound + 1][nIdx].a = winner;
+    else bracket[currentRound + 1][nIdx].b = winner;
+  } else {
+    const isLastBeforeFinale = currentRound === bracket.length - 2;
+    if (isLastBeforeFinale) {
+      bracket[currentRound + 1][nIdx].b = winner;
+    } else if (matchIdx % 2 === 1) {
+      bracket[currentRound + 1][nIdx].a = winner;
+    } else {
+      bracket[currentRound + 1][nIdx].b = winner;
+    }
+  }
+}
+
 function renderByeButtons() {
   const container = document.getElementById('byeButtonsContainer');
   if (!container) return;
@@ -2230,11 +2248,7 @@ window.byeAdvance = async function(byeSide, winnerSide) {
   match.votesA = winnerSide === 'A' ? 1 : 0;
   match.votesB = winnerSide === 'B' ? 1 : 0;
 
-  if (d.currentRound + 1 < bracket.length) {
-    const nIdx = Math.floor(matchIdx / 2);
-    if (matchIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = winner;
-    else bracket[d.currentRound + 1][nIdx].b = winner;
-  }
+  propagateWinner(bracket, d.currentRound, matchIdx, byeSide, winner);
 
   const otherIdx = byeSide === 'left' ? rightIdx : leftIdx;
   const otherMatch = round[otherIdx];
@@ -3005,11 +3019,7 @@ window.advanceWinner = async function() {
   leftMatch.votesA = vLA; leftMatch.votesB = vLB;
   leftMatch.matchId = d.matchIdLeft || null;
 
-  if (d.currentRound + 1 < bracket.length) {
-    const nIdx = Math.floor(leftIdx / 2);
-    if (leftIdx % 2 === 0) bracket[d.currentRound + 1][nIdx].a = leftWinner;
-    else bracket[d.currentRound + 1][nIdx].b = leftWinner;
-  }
+  propagateWinner(bracket, d.currentRound, leftIdx, 'left', leftWinner);
 
   let rightWinner = null;
   if (rightIdx >= half && rightIdx !== leftIdx && round[rightIdx]) {
@@ -3021,17 +3031,7 @@ window.advanceWinner = async function() {
     rightMatch.votesA = vRA; rightMatch.votesB = vRB;
     rightMatch.matchId = d.matchIdRight || null;
 
-    if (d.currentRound + 1 < bracket.length) {
-      const nIdx = Math.floor(rightIdx / 2);
-      const isLastBeforeFinale = d.currentRound === bracket.length - 2;
-      if (isLastBeforeFinale) {
-        bracket[d.currentRound + 1][nIdx].b = rightWinner;
-      } else if (rightIdx % 2 === 1) {
-        bracket[d.currentRound + 1][nIdx].a = rightWinner;
-      } else {
-        bracket[d.currentRound + 1][nIdx].b = rightWinner;
-      }
-    }
+    propagateWinner(bracket, d.currentRound, rightIdx, 'right', rightWinner);
   }
 
   let nextMatchIndex = leftIdx + 1;
