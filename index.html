@@ -1277,19 +1277,6 @@
   <div class="fanfav-list" id="myVotesList"></div>
 </div>
 
-<!-- BYE MODAL -->
-<div class="modal-overlay" id="byeModal">
-  <div class="modal">
-    <h3 id="byeModalTitle">Déclarer un Bye</h3>
-    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;">Quelle franchise avance sans voter?</p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-      <button class="btn btn-success" id="byeBtnA" onclick="confirmBye('A')">—</button>
-      <button class="btn btn-success" id="byeBtnB" onclick="confirmBye('B')">—</button>
-    </div>
-    <button class="btn btn-secondary" onclick="closeByeModal()" style="width:100%;">Annuler</button>
-  </div>
-</div>
-
 <!-- ADMIN PASSWORD MODAL -->
 <div class="modal-overlay" id="adminModal">
   <div class="modal">
@@ -1376,10 +1363,8 @@
             </div>
             <button class="btn btn-danger" onclick="closeVoting()">⏹ Fermer le vote manuellement</button>
             <button class="btn btn-success" onclick="advanceWinner()">✓ Avancer le(s) gagnant(s)</button>
-            <div style="display:flex;gap:8px;width:100%;">
-              <button class="btn btn-secondary" onclick="declareBye('left')" style="flex:1;">🚫 Bye ⬅ Gauche</button>
-              <button class="btn btn-secondary" onclick="declareBye('right')" style="flex:1;">Bye Droit ➡ 🚫</button>
-            </div>
+            <div style="width:100%;font-size:0.78rem;color:var(--muted);margin-top:4px;">🚫 Bye — cliquez la franchise qui avance sans voter :</div>
+            <div style="display:flex;flex-direction:column;gap:6px;width:100%;" id="byeButtonsContainer"></div>
             <button class="btn btn-secondary" onclick="resetTournament()">↺ Réinitialiser tout</button>
             <button class="btn btn-secondary" onclick="toggleSeedPanel()">🎯 Seed manuel</button>
           </div>
@@ -1553,6 +1538,7 @@ onAuthStateChanged(auth, (user) => {
     isAdmin = true;
     document.getElementById('adminPanel')?.classList.add('open');
     renderAdminFranchises();
+    renderByeButtons();
     initStreamerBot();
   }
   authReadyResolve();
@@ -1890,7 +1876,7 @@ function render() {
   }
 
   renderBracket();
-  if (isAdmin) renderAdminFranchises();
+  if (isAdmin) { renderAdminFranchises(); renderByeButtons(); }
 }
 
 function renderCurrentMatchup() {
@@ -2193,39 +2179,42 @@ function renderAdminFranchises() {
 }
 
 // ========== BYE ==========
-let byeSide = null;
+function renderByeButtons() {
+  const container = document.getElementById('byeButtonsContainer');
+  if (!container) return;
 
-window.declareBye = function(side) {
   const d = tournamentData;
   const bracket = getBracket();
-  if (!bracket.length) { showStatus('Pas de bracket actif!', 'error'); return; }
+  if (!bracket.length) { container.innerHTML = ''; return; }
 
   const round = bracket[d.currentRound];
+  if (!round) { container.innerHTML = ''; return; }
+
   const half = Math.ceil(round.length / 2);
   const leftIdx  = d.currentMatchIndex;
   const rightIdx = round.length - 1 - leftIdx;
 
-  let match;
-  if (side === 'left') {
-    match = round[leftIdx];
-  } else {
-    match = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
-  }
+  const leftMatch  = round[leftIdx] || null;
+  const rightMatch = (rightIdx >= half && rightIdx !== leftIdx) ? round[rightIdx] : null;
 
-  if (!match || (!match.a && !match.b)) {
-    showStatus('Pas de match disponible de ce côté!', 'error');
+  const buttons = [];
+  [['left', leftMatch], ['right', rightMatch]].forEach(([side, match]) => {
+    if (!match) return;
+    if (match.a) buttons.push({ side, winnerSide: 'A', name: match.a });
+    if (match.b) buttons.push({ side, winnerSide: 'B', name: match.b });
+  });
+
+  if (!buttons.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;">Pas de match disponible.</div>';
     return;
   }
 
-  byeSide = side;
-  const label = side === 'left' ? '⬅ Côté Gauche' : 'Côté Droit ➡';
-  document.getElementById('byeModalTitle').textContent = 'Bye — ' + label;
-  document.getElementById('byeBtnA').textContent = '✓ ' + (match.a || '?') + ' avance';
-  document.getElementById('byeBtnB').textContent = '✓ ' + (match.b || '?') + ' avance';
-  document.getElementById('byeModal').classList.add('open');
-};
+  container.innerHTML = buttons.map(b =>
+    `<button class="btn btn-secondary" onclick="byeAdvance('${b.side}','${b.winnerSide}')">🚫 ${b.name} avance (bye)</button>`
+  ).join('');
+}
 
-window.confirmBye = async function(winnerSide) {
+window.byeAdvance = async function(byeSide, winnerSide) {
   const d = tournamentData;
   const bracket = getBracket();
   const round = bracket[d.currentRound];
@@ -2266,13 +2255,7 @@ window.confirmBye = async function(winnerSide) {
     votingOpen: false,
   });
 
-  closeByeModal();
   showStatus(winner + ' avance par bye!', 'success');
-};
-
-window.closeByeModal = function() {
-  document.getElementById('byeModal').classList.remove('open');
-  byeSide = null;
 };
 
 // ========== SEED MANUEL ==========
@@ -3212,6 +3195,7 @@ window.checkAdmin = async function() {
     document.getElementById('adminPanel').classList.add('open');
     closeAdminModal();
     renderAdminFranchises();
+    renderByeButtons();
     initStreamerBot();
   } catch (e) {
     const err = document.getElementById('adminError');
